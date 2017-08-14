@@ -1,0 +1,4 @@
+[root]
+name = "syntect_server"
+version = "0.1.0"
+
