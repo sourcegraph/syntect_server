@@ -1,0 +1,25 @@
+{
+    "cmd": ["cargo", "build"],
+    "selector": "source.rust",
+    "file_regex": "(?|, ([^,<\n]*\\.[A-z]{2}):([0-9]+)|[ \t]*-->[ \t]*([^<\n]*):([0-9]+):([0-9]+))",
+    "syntax": "Packages/Rust/Cargo.sublime-syntax",
+
+    "variants": [
+        {
+            "cmd": ["cargo", "run"],
+            "name": "Run"
+        },
+        {
+            "cmd": ["cargo", "test"],
+            "name": "Test"
+        },
+        {
+            "cmd": ["cargo", "bench"],
+            "name": "Bench"
+        },
+        {
+            "cmd": ["cargo", "clean"],
+            "name": "Clean"
+        }
+    ]
+}

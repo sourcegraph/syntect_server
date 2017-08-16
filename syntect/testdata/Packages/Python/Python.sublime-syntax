@@ -1,0 +1,1712 @@
+%YAML 1.2
+---
+name: Python
+file_extensions:
+  - py
+  - py3
+  - pyw
+  - pyi
+  - rpy
+  - cpy
+  - SConstruct
+  - Sconstruct
+  - sconstruct
+  - SConscript
+  - gyp
+  - gypi
+  - Snakefile
+  - wscript
+first_line_match: ^#!\s*/.*\bpython(\d(\.\d)?)?\b
+scope: source.python
+
+variables:
+  # We support unicode here because Python 3 is the future
+  identifier_continue: '[[:alnum:]_]'
+  identifier: '\b[[:alpha:]_]{{identifier_continue}}*\b'
+  digitpart: (?:\d(?:_?\d)*)
+  path: '({{identifier}} *\. *)*{{identifier}}'
+  sql_indicator: \s*(?:SELECT|INSERT|UPDATE|DELETE|CREATE|REPLACE|ALTER|WITH)\b
+  illegal_names: (?:and|as|assert|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|not|or|pass|raise|return|try|while|with|yield)
+  format_spec: |-
+    (?x:
+      (?:.? [<>=^])?     # fill align
+      [ +-]?             # sign
+      \#?                # alternate form
+      # technically, octal and hexadecimal integers are also supported as 'width', but rarely used
+      \d*                # width
+      ,?                 # thousands separator
+      (?:\.\d+)?         # precision
+      [bcdeEfFgGnosxX%]? # type
+    )
+contexts:
+  main:
+    - include: statements
+
+  statements:
+    - include: docstrings
+    - include: line-statements
+    - include: block-statements
+    - include: classes
+    - include: functions
+    - include: modifiers
+    - include: assignments
+    - match: ;
+      scope: punctuation.terminator.statement.python
+    - include: line-expressions
+
+  line-statements:
+    - include: imports
+    - include: decorators
+    - match: \b(raise)\b
+      scope: keyword.control.flow.raise.python
+      push:
+        - meta_scope: meta.statement.raise.python
+        - include: line-continuation-or-pop
+        - match: \b(from)\b
+          scope: keyword.control.flow.raise.from.python
+          set:
+            - meta_scope: meta.statement.raise.python
+            - include: line-continuation-or-pop
+            - include: expressions
+        - include: expressions
+    - match: \b(assert)\b
+      scope: keyword.other.assert.python
+    - match: \b(del)\b
+      scope: keyword.other.del.python
+    - match: \b(print)\b(?! *([,.()\]}]))
+      scope: keyword.other.print.python
+    - match: \b(exec)\b(?! *($|[,.()\]}]))
+      scope: keyword.other.exec.python
+    - match: \b(return)\b
+      scope: keyword.control.flow.return.python
+    - match: \b(break|continue|pass)\b
+      scope: keyword.control.flow.python
+    - match: ':'
+      scope: punctuation.separator.annotation.variable.python
+
+  imports:
+    - match: \b(import)\b
+      scope: keyword.control.import.python
+      push:
+        - meta_scope: meta.statement.import.python
+        - include: line-continuation-or-pop
+        - include: import-alias
+        - include: qualified-name
+        - match: ','
+          scope: punctuation.separator.import-list.python
+        - match: (?=\S)
+          pop: true
+    - match: \b(from)\b
+      scope: keyword.control.import.from.python
+      push:
+        - meta_scope: meta.statement.import.python
+          meta_content_scope: meta.import-source.python
+        - include: line-continuation-or-pop
+        - match: \b(import)\b
+          scope: keyword.control.import.python
+          set:
+            - include: line-continuation-or-pop
+            - match: ' *(\()'
+              captures:
+                1: punctuation.section.import-list.begin.python
+              set:
+                - meta_scope: meta.statement.import.python
+                - include: comments
+                - match: \)
+                  scope: punctuation.section.import-list.end.python
+                  pop: true
+                - include: import-name-list
+                - match: (?=\S)
+                  pop: true
+            - match: ''
+              set:
+                - meta_scope: meta.statement.import.python
+                - include: line-continuation-or-pop
+                - include: import-name-list
+                - match: (?=\S)
+                  pop: true
+            - match: (?=\S)
+              pop: true
+        - include: qualified-name
+        - match: (\.)
+          scope: punctuation.accessor.dot.python
+        - match: (?=\S)
+          pop: true
+
+  import-name-list:
+    - match: ','
+      scope: punctuation.separator.import-list.python
+    - include: import-alias
+    - include: name
+    - match: \*
+      scope: constant.language.import-all.python
+    - match: \S+
+      scope: invalid.illegal.name.import.python
+
+  import-alias:
+    - match: \b(as)\b
+      scope: keyword.control.import.as.python
+
+  block-statements:
+    # async for ... in ...:
+    - match: \b(async +)?(for)\b
+      captures:
+        1: storage.modifier.async.python
+        2: keyword.control.flow.for.python
+      push:
+        - meta_scope: meta.statement.for.python
+        - include: line-continuation-or-pop
+        - match: \b(in)\b
+          scope: keyword.control.flow.for.in.python
+          set:
+            - meta_scope: meta.statement.for.python
+            - include: line-continuation-or-pop
+            - match: ':'
+              scope: punctuation.section.block.for.python
+              pop: true
+            - include: expressions
+        - match: ':'
+          scope: invalid.illegal.missing-in.python
+          pop: true
+        - include: target-list
+    # async with ... as ...:
+    - match: \b(async +)?(with)\b
+      captures:
+        1: storage.modifier.async.python
+        2: keyword.control.flow.with.python
+      push: with-body
+    # except ... as ...:
+    - match: \b(except)\b
+      scope: keyword.control.flow.except.python
+      push:
+        - meta_scope: meta.statement.except.python
+        - include: line-continuation-or-pop
+        - match: ':'
+          scope: punctuation.section.block.except.python
+          pop: true
+        - match: '\b(as)\b'
+          scope: keyword.control.flow.as.python
+          set:
+            - meta_scope: meta.statement.except.python
+            - include: line-continuation-or-pop
+            - match: ':'
+              scope: punctuation.section.block.except.python
+              pop: true
+            - include: name
+        - include: target-list
+    - match: \b(elif|else|finally|if|try|while)\b
+      scope: keyword.control.flow.python
+
+  with-body:
+    - meta_scope: meta.statement.with.python
+    - include: line-continuation-or-pop
+    - match: \b(as)\b
+      scope: keyword.control.flow.with.as.python
+      set: with-as
+    - match: ':'
+      scope: punctuation.section.block.with.python
+      pop: true
+    - match: ','
+      scope: punctuation.separator.with-resources.python
+    - include: expressions
+
+  with-as:
+    - meta_scope: meta.statement.with.python
+    - include: line-continuation-or-pop
+    - match: ':'
+      scope: punctuation.section.block.with.python
+      pop: true
+    - match: ','
+      scope: punctuation.separator.with-resources.python
+      set: with-body
+    - include: name
+
+  expressions-common:
+    - include: comments
+    - include: constants
+    - include: numbers
+    - include: yields
+    - include: operators
+    - include: lambda
+    - match: \b(await)\b
+      scope: keyword.other.await.python
+    - include: inline-if
+    - include: strings
+    - include: function-calls
+    - include: item-access
+    - match: \(
+      scope: punctuation.section.group.begin.python
+      push:
+        - meta_scope: meta.group.python
+        - match: \)
+          scope: punctuation.section.group.end.python
+          set: after-expression
+        - match: ','
+          scope: punctuation.separator.tuple.python
+        - include: inline-for
+        - include: expressions
+    - match: \)
+      scope: invalid.illegal.stray.brace.round.python
+    - match: \]
+      scope: invalid.illegal.stray.brace.square.python
+    - match: \}
+      scope: invalid.illegal.stray.brace.curly.python
+    - include: lists
+    - include: dictionaries-and-sets
+    - include: line-continuation
+
+  line-expressions: # Always include this last!
+    - include: expressions-common
+    - include: qualified-name
+
+  expressions: # Always include this last!
+    # Differs from the line scope in that invalid-name matches will pop the current context
+    # and matches accessors continued on a different line
+    - include: expressions-common
+    - include: illegal-names-pop
+    - include: qualified-name
+    - match: '(\.) *(?={{identifier}})'
+      captures:
+        1: punctuation.accessor.dot.python
+      push:
+        - include: magic-function-names
+        - include: magic-variable-names
+        - include: illegal-names
+        - include: generic-names
+        - match: ''
+          pop: true
+
+  after-expression:
+    # direct function call
+    - match: '\s*(\()'
+      captures:
+        1: punctuation.section.arguments.begin.python
+      push:
+        - meta_scope: meta.function-call.python
+        - meta_content_scope: meta.function-call.arguments.python
+        - match: \)
+          scope: punctuation.section.arguments.end.python
+          pop: true
+        - include: arguments
+    # item access
+    - match: '\s*(\[)'
+      captures:
+        1: meta.item-access.python punctuation.section.brackets.begin.python
+      push:
+        - meta_content_scope: meta.item-access.arguments.python
+        - match: \]
+          scope: meta.item-access.python punctuation.section.brackets.end.python
+          pop: true
+        - match: ':'
+          scope: punctuation.separator.slice.python
+        - include: expressions
+    # indirect function call following attribute access
+    - include: function-calls
+    # arbitrary attribute access
+    - match: '\s*(\.)'
+      captures:
+        1: punctuation.accessor.dot.python
+      push:
+        - include: magic-function-names
+        - include: magic-variable-names
+        - include: illegal-names
+        - include: generic-names
+        - match: ''
+          pop: true
+    - match: ''
+      pop: true
+
+  comments:
+    - match: "#"
+      scope: punctuation.definition.comment.python
+      push:
+        - meta_scope: comment.line.number-sign.python
+        - match: \n
+          pop: true
+
+  constants:
+    - match: \b(None|True|False|Ellipsis|NotImplemented|__debug__)\b
+      scope: constant.language.python
+    - match: \.{3}(?!\w)
+      scope: constant.language.python
+
+  numbers:
+    # https://docs.python.org/3/reference/lexical_analysis.html#numeric-literals
+    # hexadecimal
+    - match: \b(?i)(?:0x\h*)(L) # py2
+      scope: constant.numeric.integer.long.hexadecimal.python
+      captures:
+        1: storage.type.numeric.long.python
+    - match: \b(?i)(0x(_?\h)+)
+      scope: constant.numeric.integer.hexadecimal.python
+    # octal
+    - match: \b(?i)0(?:o|[0-7])[0-7]*(L) # py2
+      scope: constant.numeric.integer.long.octal.python
+      captures:
+        1: storage.type.numeric.long.python
+    - match: \b(?i)0[0-7]+ # py2
+      scope: constant.numeric.integer.octal.python
+    - match: \b(?i)0o(_?[0-7])+
+      scope: constant.numeric.integer.octal.python
+    # binary
+    - match: \b(?i)0b[01]*(L) # py2
+      scope: constant.numeric.integer.long.binary.python
+      captures:
+        1: storage.type.numeric.long.python
+    - match: \b(?i)0b(_?[01])*
+      scope: constant.numeric.integer.binary.python
+    # complex
+    - match: (?i){{digitpart}}?(\.){{digitpart}}(?:e[\-\+]?{{digitpart}})?(j) # mandatory fraction
+      scope: constant.numeric.complex.python
+      captures:
+        1: punctuation.separator.decimal.python
+        2: storage.type.numeric.complex.python
+    - match: \b(?i)(?:{{digitpart}}(?:(\.){{digitpart}}?)?|(\.){{digitpart}})(?:e[\-\+]?{{digitpart}})(j) # mandatory exponent
+      scope: constant.numeric.complex.python
+      captures:
+        1: punctuation.separator.decimal.python
+        2: punctuation.separator.decimal.python
+        3: storage.type.numeric.complex.python
+    - match: (?i){{digitpart}}(\.)?(j) # mandatory digitpart
+      scope: constant.numeric.complex.python
+      captures:
+        1: punctuation.separator.decimal.python
+        2: storage.type.numeric.complex.python
+    # floating point
+    - match: (?i){{digitpart}}?(\.){{digitpart}}(?:e[\-\+]?{{digitpart}})? # mandatory fraction
+      scope: constant.numeric.float.python
+      captures:
+        1: punctuation.separator.decimal.python
+    - match: \b(?i)(?:{{digitpart}}(?:(\.){{digitpart}}?)?|(\.){{digitpart}})(?:e[\-\+]?{{digitpart}}) # mandatory exponent
+      scope: constant.numeric.float.python
+      captures:
+        1: punctuation.separator.decimal.python
+        2: punctuation.separator.decimal.python
+    - match: (?i){{digitpart}}(\.) # mandatory digitpart
+      scope: constant.numeric.float.python
+      captures:
+        1: punctuation.separator.decimal.python
+    # integer
+    - match: \b(?i)(?:[1-9]\d*|0)(L)\b # py2
+      scope: constant.numeric.integer.long.decimal.python
+      captures:
+        1: storage.type.numeric.long.python
+    - match: \b(?i)([1-9][\d_]*|0)\b
+      scope: constant.numeric.integer.decimal.python
+
+  modifiers:
+    - match: \b(?:(global)|(nonlocal))\b
+      captures:
+        1: storage.modifier.global.python
+        2: storage.modifier.nonlocal.python
+      push:
+        - include: line-continuation-or-pop
+        - match: ','
+          scope: punctuation.separator.storage-list.python
+        - include: name
+        - match: \S+
+          scope: invalid.illegal.name.storage.python
+
+  yields:
+    - match: \b(yield)(?:\s+(from))?\b
+      captures:
+        1: keyword.control.flow.yield.python
+        2: keyword.control.flow.yield-from.python
+
+  assignments:
+    - match: \+=|-=|\*=|/=|//=|%=|&=|\|=|\^=|>>=|<<=|\*\*=
+      scope: keyword.operator.assignment.augmented.python
+    - match: '=(?!=)'
+      scope: keyword.operator.assignment.python
+
+  operators:
+    - match: <>
+      scope: invalid.deprecated.operator.python
+    - match: <\=|>\=|\=\=|<|>|\!\=
+      scope: keyword.operator.comparison.python
+    - match: \+|\-|\*|\*\*|/|//|%|<<|>>|&|\||\^|~
+      scope: keyword.operator.arithmetic.python
+    - match: \b(and|in|is|not|or)\b
+      comment: keyword operators that evaluate to True or False
+      scope: keyword.operator.logical.python
+    - match: '@'
+      scope: keyword.operator.matrix.python
+
+  allow-unpack-operators:
+    # Match unpacking operators, if present
+    - include: comments
+    - match: \*{3,}
+      scope: invalid.illegal.syntax.python
+      pop: true
+    - match: \*\*
+      scope: keyword.operator.unpacking.mapping.python
+      pop: true
+    - match: \*
+      scope: keyword.operator.unpacking.sequence.python
+      pop: true
+    - match: (?!\s|#)
+      pop: true
+
+  classes:
+    - match: '^\s*(class)\b'
+      captures:
+        1: storage.type.class.python
+      push:
+        - meta_scope: meta.class.python
+        - include: line-continuation-or-pop
+        - match: ':'
+          scope: punctuation.section.class.begin.python
+          pop: true
+        - match: "(?={{identifier}})"
+          push:
+            - meta_content_scope: entity.name.class.python
+            - include: entity-name-class
+            - match: ''
+              pop: true
+        - match: \(
+          scope: punctuation.section.inheritance.begin.python
+          set:
+            - meta_scope: meta.class.inheritance.python
+            - match: \)
+              scope: punctuation.section.inheritance.end.python
+              set:
+                - include: line-continuation-or-pop
+                - match: ':'
+                  scope: meta.class.python punctuation.section.class.begin.python
+                  pop: true
+                - match: (?=\S)
+                  pop: true
+            - match: ':'
+              scope: invalid.illegal.no-closing-parens.python
+              pop: true
+            - match: ','
+              scope: punctuation.separator.inheritance.python
+            - include: illegal-names-pop
+            - match: ({{identifier}}) *(=)
+              captures:
+                1: variable.parameter.class-inheritance.python
+                2: keyword.operator.assignment.python
+            - match: (?={{path}})
+              push:
+                - meta_scope: entity.other.inherited-class.python
+                - match: '{{identifier}}(?: *(\.) *)?'
+                  captures:
+                    1: punctuation.accessor.dot.python
+                - match: ''
+                  pop: true
+            - include: expressions
+
+  functions:
+    - match: '^\s*(?:(async)\s+)?(def)\b'
+      captures:
+        1: storage.modifier.async.python
+        2: storage.type.function.python
+      push:
+        - meta_scope: meta.function.python
+        - include: line-continuation-or-pop
+        - match: ':'
+          scope: punctuation.section.function.begin.python
+          pop: true
+        - match: "(?={{identifier}})"
+          push:
+            - meta_content_scope: entity.name.function.python
+            - include: entity-name-function
+            - match: ''
+              pop: true
+        - match: '(?=\()'
+          set:
+            - match: \(
+              scope: meta.function.parameters.python punctuation.section.parameters.begin.python
+              set: [function-parameters, allow-unpack-operators]
+
+  function-parameters:
+    - meta_content_scope: meta.function.parameters.python
+    - match: \)
+      scope: punctuation.section.parameters.end.python
+      set: function-after-parameters
+    - include: comments
+    - match: ','
+      scope: punctuation.separator.parameters.python
+      push: allow-unpack-operators
+    - match: '(?==)'
+      set:
+        - match: '='
+          scope: keyword.operator.assignment.python
+          set:
+            - meta_scope: meta.function.parameters.default-value.python
+            - match: '(?=[,)])'
+              set: [function-parameters, allow-unpack-operators]
+            - include: expressions
+    - match: '(?=:)'
+      set:
+        - match: ':'
+          scope: punctuation.separator.annotation.parameter.python
+          set:
+            - meta_scope: meta.function.parameters.annotation.python
+            - match: '(?=[,)=])'
+              set: function-parameters
+            - include: expressions
+    - include: illegal-names
+    - match: '{{identifier}}'
+      scope: variable.parameter.python
+    - include: line-continuation
+
+  function-after-parameters:
+    - meta_content_scope: meta.function.python
+    - match: '(?=->)'
+      set:
+        - meta_content_scope: meta.function.annotation.return.python
+        - match: ->
+          scope: punctuation.separator.annotation.return.python
+        - match: '(?=:)'
+          set: function-after-parameters
+        - include: line-continuation-or-pop
+        - include: expressions
+    - match: ':'
+      scope: meta.function.python punctuation.section.function.begin.python
+      pop: true
+    - include: comments
+    - match: (?=\S)
+      pop: true
+
+  decorators:
+    - match: ^\s*(?=@)
+      push:
+        # Due to line continuations, we don't know whether this is a "function call" yet
+        - meta_content_scope: meta.annotation.python
+        - match: '@'
+          scope: punctuation.definition.annotation.python
+        - match: $
+          pop: true
+        - include: line-continuation-or-pop
+        - match: (?=\.?\s*{{path}}\s*\() # now we do
+          set: [decorator-function-call-wrapper, qualified-name-until-leaf]
+        - match: (?=\.?\s*{{path}})
+          push: [decorator-wrapper, qualified-name-until-leaf]
+        - match: \S
+          scope: invalid.illegal.character.python
+          pop: true
+
+  decorator-wrapper:
+    - match: '{{identifier}}'
+      scope: meta.qualified-name.python variable.annotation.python
+    - match: ''
+      pop: true
+
+  decorator-function-call-wrapper:
+    - meta_scope: meta.annotation.function.python
+    - match: '{{identifier}}'
+      scope: meta.qualified-name.python variable.annotation.function.python
+    - match: \)
+      scope: punctuation.section.arguments.end.python
+      set: after-expression
+    - match: \(
+      scope: punctuation.section.arguments.begin.python
+      push:
+        - meta_content_scope: meta.annotation.arguments.python
+        - match: (?=\))
+          pop: true
+        - include: arguments
+
+  item-access:
+    - match: '(?={{path}}\s*\[)'
+      push:
+        - match: \]
+          scope: meta.item-access.python punctuation.section.brackets.end.python
+          set: after-expression
+        - match: '(?={{path}}\s*\[)'
+          push:
+            - meta_content_scope: meta.item-access.python
+            - match: '(?=\s*\[)'
+              pop: true
+            - include: qualified-name
+        - match: \[
+          scope: meta.item-access.python punctuation.section.brackets.begin.python
+          push:
+            - meta_content_scope: meta.item-access.arguments.python
+            - match: '(?=\])'
+              pop: true
+            - match: ':'
+              scope: punctuation.separator.slice.python
+            - include: expressions
+
+  function-calls:
+    - match: '(?=(\.\s*)?{{path}}\s*\()'
+      push: [function-call-wrapper, qualified-name-until-leaf]
+
+  function-call-wrapper:
+    - meta_scope: meta.function-call.python
+    - match: '{{identifier}}'
+      scope: meta.qualified-name.python variable.function.python
+    - match: \)
+      scope: punctuation.section.arguments.end.python
+      set: after-expression
+    - match: \(
+      scope: punctuation.section.arguments.begin.python
+      push:
+        - meta_content_scope: meta.function-call.arguments.python
+        - match: (?=\))
+          pop: true
+        - include: arguments
+
+  arguments:
+    - include: keyword-arguments
+    - match: ','
+      scope: punctuation.separator.arguments.python
+      push: allow-unpack-operators
+    - include: inline-for
+    - include: expressions
+
+  keyword-arguments:
+    - match: '(?={{identifier}}\s*=(?!=))'
+      push:
+        - include: line-continuation-or-pop
+        - match: '='
+          scope: keyword.operator.assignment.python
+          set:
+            - match: (?=\s*[,):])
+              pop: true
+            - include: expressions
+        - include: illegal-names
+        - match: '{{identifier}}'
+          scope: variable.parameter.python
+
+  lambda:
+    - match: \b(lambda)(?=\s|:|$)
+      scope: storage.type.function.inline.python
+      push: [lambda-parameters, allow-unpack-operators]
+
+  lambda-parameters:
+    - meta_scope: meta.function.inline.python
+    - meta_content_scope: meta.function.inline.parameters.python
+    - include: line-continuation-or-pop
+    - match: '\:'
+      scope: punctuation.section.function.begin.python
+      pop: true
+    - match: ','
+      scope: punctuation.separator.parameters.python
+      push: allow-unpack-operators
+    - include: keyword-arguments
+    - include: illegal-names
+    - match: '{{identifier}}'
+      scope: variable.parameter.python
+    - match: '\S'
+      scope: invalid.illegal.expected-parameter.python
+
+  lists:
+    - match: '(\[)(\s*(\]))\b'
+      captures:
+        1: punctuation.section.list.begin.python
+        2: meta.empty-list.python
+        3: punctuation.section.list.end.python
+    - match: \[
+      scope: punctuation.section.list.begin.python
+      push:
+        - meta_scope: meta.structure.list.python
+        - match: \]
+          scope: punctuation.section.list.end.python
+          set: after-expression
+        - match: ','
+          scope: punctuation.separator.list.python
+          push: allow-unpack-operators
+        - include: inline-for
+        - include: expressions
+
+  dictionaries-and-sets:
+    - match: '(\{)(\s*(\}))'
+      scope: meta.structure.dictionary.python
+      captures:
+        1: punctuation.section.dictionary.begin.python
+        2: meta.empty-dictionary.python
+        3: punctuation.section.dictionary.end.python
+    - match: \{
+      scope: punctuation.section.dictionary-or-set.begin.python
+      push:
+        - meta_scope: meta.structure.dictionary-or-set.python
+        - match: \}
+          scope: punctuation.section.dictionary-or-set.end.python
+          set: after-expression
+        - match: ','
+          scope: punctuation.separator.dictionary-or-set.python
+          push: allow-unpack-operators
+        - match: ':'
+          scope: punctuation.separator.key-value.python
+        - include: inline-for
+        - include: expressions
+
+  builtin-exceptions:
+    - match: |-
+        (?x)\b(
+        	(
+        		Arithmetic|Assertion|Attribute|BlockingIO|BrokenPipe|Buffer|ChildProcess|
+        		Connection(Aborted|Refused|Reset)?|EOF|Environment|FileExists|
+        		FileNotFound|FloatingPoint|Interrupted|IO|IsADirectoryError|
+        		Import|Indentation|Index|Key|Lookup|Memory|Name|NotADirectory|
+        		NotImplemented|OS|Overflow|Permission|ProcessLookup|Reference|
+        		Runtime|Standard|Syntax|System|Tab|Timeout|Type|UnboundLocal|
+        		Unicode(Encode|Decode|Translate)?|Value|VMS|Windows|ZeroDivision
+        	)Error|
+        	((Pending)?Deprecation|Runtime|Syntax|User|Future|Import|Unicode|Bytes)?Warning|
+        	(Base)?Exception|
+        	SystemExit|StopIteration|NotImplemented|KeyboardInterrupt|GeneratorExit
+        )\b
+      scope: support.type.exception.python
+
+  builtin-functions:
+    - match: |-
+        (?x)\b(
+        	__import__|all|abs|any|apply|ascii|bin|callable|chr|classmethod|cmp|coerce|
+        	compile|delattr|dir|divmod|enumerate|eval|exec|execfile|filter|format|getattr|
+        	globals|hasattr|hash|help|hex|id|input|intern|isinstance|issubclass|iter|
+        	len|locals|map|max|min|next|oct|open|ord|pow|print|property|range|
+        	raw_input|reduce|reload|repr|reversed|round|setattr|sorted|staticmethod|
+        	sum|super|type|unichr|vars|zip
+        )\b
+      scope: support.function.builtin.python
+
+  builtin-types:
+    - match: |-
+        (?x)\b(
+        	basestring|bool|buffer|bytearray|bytes|complex|dict|float|frozenset|int|
+        	list|long|memoryview|object|range|set|slice|str|tuple|unicode|xrange
+        )\b
+      scope: support.type.python
+
+  name:
+    - match: '(?={{identifier}})'
+      push:
+        - include: name-specials
+        - include: generic-names
+        - match: ''
+          pop: true
+
+  dotted-name:
+    - match: '\s*(\.)\s*(?={{identifier}})'
+      captures:
+        1: punctuation.accessor.dot.python
+      push:
+        - include: dotted-name-specials
+        - include: generic-names
+        - match: ''
+          pop: true
+
+  qualified-name:
+    - match: '(?={{path}})'
+      push:
+        - meta_scope: meta.qualified-name.python
+        - include: name
+        - include: dotted-name
+        - match: \s*(\.\S+) # matches and consumes the remainder of "abc.123" or "abc.+"
+          captures:
+            1: invalid.illegal.name.python
+          pop: true
+        - match: ''
+          pop: true
+
+  qualified-name-until-leaf:
+    # Push this together with another context to match a qualified name
+    # until the last non-special identifier (if any).
+    # This allows the leaf to be scoped individually.
+    - meta_scope: meta.qualified-name.python
+    - include: name-specials
+    # If a line continuation follows, this may or may not be the last leaf (most likley not though)
+    - match: '{{identifier}}(?=\s*\\)'
+      scope: meta.generic-name.python
+    - match: (?={{identifier}}\s*\.)
+      push:
+        - include: name-specials
+        - include: generic-names
+        - match: ''
+          pop: true
+    - match: (\.)\s*(?={{identifier}}\s*\.)
+      captures:
+        1: punctuation.accessor.dot.python
+      push:
+        - include: dotted-name-specials
+        - include: generic-names
+        - match: ''
+          pop: true
+    - match: (\.)\s*(?={{identifier}})
+      captures:
+        1: punctuation.accessor.dot.python
+      set:
+        - include: dotted-name-specials
+        - match: ''
+          pop: true
+    - match: (?=\S|$)
+      pop: true
+
+  name-specials:
+    - include: builtin-functions
+    - include: builtin-types
+    - include: builtin-exceptions
+    - include: illegal-names
+    - include: magic-function-names
+    - include: magic-variable-names
+    - include: language-variables
+
+  dotted-name-specials:
+    - include: magic-function-names
+    - include: magic-variable-names
+    - include: illegal-names
+
+  entity-name-class:
+    - include: illegal-names
+    - include: generic-names
+
+  entity-name-function:
+    - include: magic-function-names
+    - include: illegal-names
+    - include: generic-names
+
+  generic-names:
+    - match: '{{identifier}}'
+      scope: meta.generic-name.python
+
+  illegal-names:
+    - match: \b{{illegal_names}}\b
+      scope: invalid.illegal.name.python
+
+  illegal-names-pop:
+    - match: \b{{illegal_names}}\b
+      scope: invalid.illegal.name.python
+      pop: true
+
+  language-variables:
+    - match: \b(self|cls)\b
+      scope: variable.language.python
+
+  line-continuation:
+    - match: (\\)(.*)$\n?
+      captures:
+        1: punctuation.separator.continuation.line.python
+        2: invalid.illegal.unexpected-text.python
+    # make sure to resume parsing at next line
+      push:
+        # This prevents strings after a continuation from being a docstring
+        - include: strings
+        - match: (?=\S|^\s*$)
+          pop: true
+
+  line-continuation-or-pop:
+    - include: line-continuation
+    - match: (?=\s*($|;|#))
+      pop: true
+
+  magic-function-names:
+    # https://docs.python.org/2/reference/datamodel.html
+    # https://docs.python.org/3/reference/datamodel.html
+    - match: |-
+        (?x)\b__(?:
+          # unary operators
+          invert|neg|pos|abs|
+          # binary operators
+          add|and|div|divmod|floordiv|lshift|mod|mul|or|pow|rshift|sub|truediv|xor|
+          contains|
+          # right-hand binary operators
+          radd|rand|rdiv|rdivmod|rfloordiv|rlshift|rmod|rmul|ror|rpow|rrshift|rsub|rtruediv|rxor|
+          # in-place operator assignments
+          iadd|iand|idiv|ifloordiv|ilshift|imod|imul|ior|ipow|irshift|isub|itruediv|ixor|
+          # comparisons
+          eq|ge|gt|le|lt|ne|
+          cmp|rcmp| # py2
+          # primary coercion
+          bool|str|
+          nonzero|unicode| # py2
+          # number coercion (converts something to a number)
+          bytes|complex|float|index|int|round|
+          long| # py2
+          # other "coercion"
+          format|len|length_hint|hash|repr|reversed|
+          coerce|hex|oct| # py2
+          fspath|
+          # iterator (and 'await')
+          iter|next|
+          aiter|anext|
+          await|
+          # attribute and item access
+          delattr|delitem|delslice|
+          getattr|getattribute|getitem|getslice|
+          setattr|setitem|setslice|
+          dir|missing|
+          # context manager
+          enter|exit|
+          aenter|aexit|
+          # other class magic
+          call|del|init|new|init_subclass|
+          instancecheck|subclasscheck|
+          # pickling
+          getnewargs|getnewargs_ex|getstate|setstate|reduce|reduce_ex|
+          # descriptors
+          delete|get|set|set_name|
+          # class-specific
+          subclasses
+        )__\b
+      comment: these methods have magic interpretation by python and are generally called indirectly through syntactic constructs
+      scope: support.function.magic.python
+
+  magic-variable-names:
+    # magic variables which a class/module/object may have.
+    # https://docs.python.org/3/library/inspect.html#types-and-members
+    # https://docs.python.org/3/reference/datamodel.html#object.__slots__
+    # https://docs.python.org/3/reference/datamodel.html#preparing-the-class-namespace
+    - match: |-
+        (?x)\b__(?:
+          # generic object
+          class|dict|doc|module|name|
+          # module-specific / global
+          all|file|package|
+          # functions & methods
+          annotations|closure|code|defaults|func|globals|kwdefaults|self|qualname|
+          # classes (attributes)
+          bases|prepare|slots|metaclass|mro|
+          # Python 2
+          members|methods
+        )__\b
+      scope: support.variable.magic.python
+
+  docstrings:
+    - match: ^\s*(?=(?i)(ur|ru|u|r)?("""|'''))
+      push:
+      - match: (?i)(ur|ru|u|r)?("""|''')
+        captures:
+          1: storage.type.string.python
+          2: punctuation.definition.comment.begin.python
+        set:
+          - meta_scope: comment.block.documentation.python
+          - match: '\2'
+            scope: punctuation.definition.comment.end.python
+            pop: true
+
+  escaped-char:
+    - match: '(\\x\h{2})|(\\[0-7]{3})|(\\[\\"''abfnrtv])'
+      captures:
+        1: constant.character.escape.hex.python
+        2: constant.character.escape.octal.python
+        3: constant.character.escape.python
+
+  escaped-unicode-char:
+    - match: '(\\U\h{8})|(\\u\h{4})|(\\N\{[a-zA-Z ]+\})'
+      captures:
+        1: constant.character.escape.unicode.16-bit-hex.python
+        2: constant.character.escape.unicode.32-bit-hex.python
+        3: constant.character.escape.unicode.name.python
+
+  line-continuation-inside-string:
+    - match: (\\)$\n?
+      captures:
+        1: punctuation.separator.continuation.line.python
+    - match: \n
+      scope: invalid.illegal.unclosed-string.python
+      set: after-expression
+
+  constant-placeholder:
+    - match: |- # printf style
+        (?x)
+        %
+          ( \( ({{identifier}}) \) )? # mapping key
+          \#?            # alternate form
+          0?             # pad with zeros
+          \-?            # left-adjust
+          \ ?            # implicit sign
+          [+-]?          # sign
+          (\d*|\*)       # width
+          (\. (\d*|\*))? # precision
+          [hlL]?         # length modifier (but ignored)
+          [acdeEfFgGiorsuxX%]
+      scope: constant.other.placeholder.python
+      captures:
+        2: variable.other.placeholder.python
+    - match: '%(?:[aAwdbBGmyYHIpMSfzZjuUVWcxX%]|-[dmHIMSj])'
+      scope: constant.other.placeholder.python
+    - match: '\{\{|\}\}'
+      scope: constant.character.escape.python
+    - include: formatting-syntax
+
+  formatting-syntax:
+    # https://docs.python.org/3.6/library/string.html#formatstrings
+    - match: |- # simple form
+        (?x)
+        (\{)
+          (?: [\w.\[\]]+)?         # field_name
+          (   ! [ars])?            # conversion
+          (   : {{format_spec}} )? # format_spec
+        (\})
+      scope: constant.other.placeholder.python
+      captures:
+        1: punctuation.definition.placeholder.begin.python
+        2: storage.modifier.conversion.python
+        3: constant.other.format-spec.python
+        4: punctuation.definition.placeholder.end.python
+    - match: \{(?=[^\}"']+\{) # complex (nested) form
+      scope: punctuation.definition.placeholder.begin.python
+      push:
+        - meta_scope: constant.other.placeholder.python
+        - match: \}
+          scope: punctuation.definition.placeholder.end.python
+          pop: true
+        - match: '[\w.\[\]]+'
+        - match: '![ars]'
+          scope: storage.modifier.conversion.python
+        - match: ':'
+          push:
+            - meta_scope: meta.format-spec.python constant.other.format-spec.python
+            - match: (?=\})
+              pop: true
+            - include: formatting-syntax
+
+  f-string-content:
+    # https://www.python.org/dev/peps/pep-0498/
+    # https://docs.python.org/3.6/reference/lexical_analysis.html#f-strings
+    - match: \{\{|\}\}
+      scope: constant.character.escape.python
+    - match: \{\s*\}
+      scope: invalid.illegal.empty-expression.python
+    - match: (?=\{)
+      push: f-string-replacement
+    - match: \}
+      scope: invalid.illegal.stray-brace.python
+
+  f-string-replacement:
+    - clear_scopes: 1
+    - match: \}
+      scope: meta.interpolation.python punctuation.section.interpolation.end.python
+      pop: true
+    - match: \{
+      scope: punctuation.section.interpolation.begin.python
+      push:
+        - meta_scope: meta.interpolation.python
+        - match: (?=\})
+          pop: true
+        - match: '![ars]'
+          scope: storage.modifier.conversion.python
+        - match: ':'
+          push:
+            - meta_scope: meta.format-spec.python constant.other.format-spec.python
+            # Because replacements can also be used *within* the format-spec,
+            # basically any character is valid and matching {{format_spec}} is useless.
+            # - match: '{{format_spec}}'
+            - match: (?=\})
+              pop: true
+            - include: f-string-content
+        - match: ''
+          push:
+            - meta_content_scope: source.python.embedded
+            - match: (?=![^=]|:|\})
+              pop: true
+            - match: \\
+              scope: invalid.illegal.backslash-in-fstring.python
+            - include: inline-for
+            - include: expressions
+
+  string-quoted-double-block:
+    # Triple-quoted capital R raw string, unicode or not, no syntax embedding
+    - match: '([uU]?R)(""")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.block.python
+        - match: '"""'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-unicode-char
+    # Triple-quoted capital R raw string, bytes, no syntax embedding
+    - match: '([bB]R|R[bB])(""")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.block.python
+        - match: '"""'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+    # Triple-quoted raw string, unicode or not, will detect SQL, otherwise regex
+    - match: '([uU]?r)(""")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.block.python
+        - match: '(?={{sql_indicator}})'
+          set:
+            - meta_scope: meta.string.python string.quoted.double.block.python
+            - match: '"""'
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - match: ''
+              push: scope:source.sql
+              with_prototype:
+                - match: '(?=""")'
+                  pop: true
+                - include: escaped-unicode-char
+                - include: constant-placeholder
+        - match: '(?=\S)'
+          set:
+            - meta_scope: meta.string.python string.quoted.double.block.python
+            - match: '"""'
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - match: ''
+              push: scope:source.regexp.python
+              with_prototype:
+                - match: '(?=""")'
+                  pop: true
+                - include: escaped-unicode-char
+    # Triple-quoted raw string, bytes, will use regex
+    - match: '([bB]r|r[bB])(""")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.block.python
+        - match: '"""'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - match: ''
+          push: scope:source.regexp.python
+          with_prototype:
+            - match: '(?=""")'
+              pop: true
+    # Triple-quoted raw f-string
+    - match: ((?i)fr|rf)(""")
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.double.block.python
+        - match: '"""'
+          scope: punctuation.definition.string.begin.python
+          set: after-expression
+        - include: f-string-content
+    # Triple-quoted f-string
+    - match: ((?i)f|f)(""")
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.double.block.python
+        - match: '"""'
+          scope: punctuation.definition.string.begin.python
+          set: after-expression
+        - include: escaped-unicode-char
+        - include: escaped-char
+        - include: f-string-content
+    # Triple-quoted string, unicode or not, will detect SQL
+    - match: '([uU]?)(""")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.block.python
+        - match: '(?={{sql_indicator}})'
+          set:
+            - meta_scope: meta.string.python string.quoted.double.block.python
+            - match: '"""'
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - match: ''
+              push: scope:source.sql
+              with_prototype:
+                - match: '(?=""")'
+                  pop: true
+                - include: escaped-unicode-char
+                - include: escaped-char
+                - include: constant-placeholder
+        - match: '(?=\S)'
+          set:
+            - meta_scope: meta.string.python string.quoted.double.block.python
+            - match: '"""'
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - include: escaped-unicode-char
+            - include: escaped-char
+            - include: constant-placeholder
+    # Triple-quoted string, bytes, no syntax embedding
+    - match: '([bB])(""")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.block.python
+        - match: '"""'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-char
+        - include: constant-placeholder
+
+  string-quoted-double:
+    # Single-line capital R raw string, unicode or not, no syntax embedding
+    - match: '([uU]?R)(")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+    # Single-line capital R raw string, bytes, no syntax embedding
+    - match: '([bB]R|R[bB])(")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+    # Single-line raw string, unicode or not, starting with a SQL keyword
+    - match: '([uU]?r)(")(?={{sql_indicator}})'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.sql
+          with_prototype:
+            - match: '(?="|\n)'
+              pop: true
+            - include: constant-placeholder
+            - include: line-continuation-inside-string
+    # Single-line raw string, unicode or not, treated as regex
+    - match: '([uU]?r)(")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.regexp.python
+          with_prototype:
+            - match: '(?="|\n)'
+              pop: true
+            - include: line-continuation-inside-string
+    # Single-line raw string, bytes, treated as regex
+    - match: '([bB]r|r[bB])(")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.regexp.python
+          with_prototype:
+            - match: '(?="|\n)'
+              pop: true
+    # Single-line raw f-string
+    - match: ((?i)fr|rf)(")
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - include: f-string-content
+    # Single-line f-string
+    - match: ((?i)f|f)(")
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-unicode-char
+        - include: escaped-char
+        - include: line-continuation-inside-string
+        - include: f-string-content
+    # Single-line string, unicode or not, starting with a SQL keyword
+    - match: '([uU]?)(")(?={{sql_indicator}})'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.sql
+          with_prototype:
+            - match: '(?="|\n)'
+              pop: true
+            - include: escaped-char
+            - include: escaped-unicode-char
+            - include: line-continuation-inside-string
+            - include: constant-placeholder
+    # Single-line string, unicode or not
+    - match: '([uU]?)(")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-char
+        - include: escaped-unicode-char
+        - include: line-continuation-inside-string
+        - include: constant-placeholder
+    # Single-line string, bytes
+    - match: '([bB])(")'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.double.python
+        - match: '"'
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-char
+        - include: line-continuation-inside-string
+        - include: constant-placeholder
+
+  string-quoted-single-block:
+    # Triple-quoted capital R raw string, unicode or not, no syntax embedding
+    - match: ([uU]?R)(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.block.python
+        - match: "'''"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+    # Triple-quoted capital R raw string, bytes, no syntax embedding
+    - match: ([bB]R|R[bB])(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.block.python
+        - match: "'''"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+    # Triple-quoted raw string, unicode or not, will detect SQL, otherwise regex
+    - match: ([uU]?r)(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.block.python
+        - match: '(?={{sql_indicator}})'
+          set:
+            - meta_scope: meta.string.python string.quoted.single.block.python
+            - match: "'''"
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - match: ''
+              push: scope:source.sql
+              with_prototype:
+                - match: (?=''')
+                  pop: true
+                - include: escaped-char
+                - include: escaped-unicode-char
+                - include: constant-placeholder
+        - match: '(?=\S)'
+          set:
+            - meta_scope: meta.string.python string.quoted.single.block.python
+            - match: "'''"
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - match: ''
+              push: scope:source.regexp.python
+              with_prototype:
+                - match: (?=''')
+                  pop: true
+                - include: escaped-unicode-char
+    # Triple-quoted raw string, bytes, will use regex
+    - match: ([bB]r|r[bB])(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.block.python
+        - match: "'''"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - match: ''
+          push: scope:source.regexp.python
+          with_prototype:
+            - match: (?=''')
+              pop: true
+    # Triple-quoted raw f-string
+    - match: ((?i)fr|rf)(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.single.block.python
+        - match: "'''"
+          scope: punctuation.definition.string.begin.python
+          set: after-expression
+        - include: f-string-content
+    # Triple-quoted f-string
+    - match: ((?i)f|f)(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.single.block.python
+        - match: "'''"
+          scope: punctuation.definition.string.begin.python
+          set: after-expression
+        - include: escaped-unicode-char
+        - include: escaped-char
+        - include: f-string-content
+    # Triple-quoted string, unicode or not, will detect SQL
+    - match: ([uU]?)(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.block.python
+        - match: '(?={{sql_indicator}})'
+          set:
+            - meta_scope: meta.string.python string.quoted.single.block.python
+            - match: "'''"
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - match: ''
+              push: scope:source.sql
+              with_prototype:
+                - match: (?=''')
+                  pop: true
+                - include: escaped-char
+                - include: escaped-unicode-char
+                - include: constant-placeholder
+        - match: '(?=\S)'
+          set:
+            - meta_scope: meta.string.python string.quoted.single.block.python
+            - match: "'''"
+              scope: punctuation.definition.string.end.python
+              set: after-expression
+            - include: escaped-char
+            - include: escaped-unicode-char
+            - include: constant-placeholder
+    # Triple-quoted string, bytes, no syntax embedding
+    - match: ([bB])(''')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.block.python
+        - match: "'''"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-char
+        - include: constant-placeholder
+
+  string-quoted-single:
+    # Single-line capital R raw string, unicode or not, no syntax embedding
+    - match: '([uU]?R)('')'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+    # Single-line capital R raw string, bytes, no syntax embedding
+    - match: '([bB]R|R[bB])('')'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+    # Single-line raw string, unicode or not, starting with a SQL keyword
+    - match: '([uU]?r)('')(?={{sql_indicator}})'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.sql
+          with_prototype:
+            - match: '(?=''|\n)'
+              pop: true
+            - include: line-continuation-inside-string
+            - include: constant-placeholder
+    # Single-line raw string, unicode or not, treated as regex
+    - match: '([uU]?r)('')'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.regexp.python
+          with_prototype:
+            - match: '(?=''|\n)'
+              pop: true
+            - include: line-continuation-inside-string
+    # Single-line raw string, bytes, treated as regex
+    - match: '([bB]r|r[bB])('')'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.regexp.python
+          with_prototype:
+            - match: '(?=''|\n)'
+              pop: true
+            - include: line-continuation-inside-string
+    # Single-line raw f-string
+    - match: ((?i)fr|rf)(')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - include: f-string-content
+    # Single-line f-string
+    - match: ((?i)f|f)(')
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.interpolated.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-unicode-char
+        - include: escaped-char
+        - include: line-continuation-inside-string
+        - include: f-string-content
+    # Single-line string, unicode or not, starting with a SQL keyword
+    - match: '([uU]?)('')(?={{sql_indicator}})'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: line-continuation-inside-string
+        - match: ''
+          push: scope:source.sql
+          with_prototype:
+            - match: '(?=''|\n)'
+              pop: true
+            - include: escaped-char
+            - include: escaped-unicode-char
+            - include: line-continuation-inside-string
+            - include: constant-placeholder
+    # Single-line string, unicode or not
+    - match: '([uU]?)('')'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-char
+        - include: escaped-unicode-char
+        - include: line-continuation-inside-string
+        - include: constant-placeholder
+    # Single-line string, bytes
+    - match: '([bB])('')'
+      captures:
+        1: storage.type.string.python
+        2: punctuation.definition.string.begin.python
+      push:
+        - meta_scope: meta.string.python string.quoted.single.python
+        - match: "'"
+          scope: punctuation.definition.string.end.python
+          set: after-expression
+        - include: escaped-char
+        - include: line-continuation-inside-string
+        - include: constant-placeholder
+
+  strings:
+    # block versions must be matched first
+    - include: string-quoted-double-block
+    - include: string-quoted-double
+    - include: string-quoted-single-block
+    - include: string-quoted-single
+
+  inline-for:
+    - match: \b(?:(async)\s+)?(for)\b
+      captures:
+        1: storage.modifier.async.python
+        2: keyword.control.flow.for.generator.python
+      push:
+        - meta_scope: meta.expression.generator.python
+        - match: \b(in)\b
+          scope: keyword.control.flow.for.in.python
+          pop: true
+        - match: '(?=[)\]}])'
+          scope: invalid.illegal.missing-in.python
+          pop: true
+        - include: illegal-names-pop
+        - include: target-list
+
+  inline-if:
+    - match: \b(if)\b
+      scope: keyword.control.flow.if.inline.python
+    - match: \b(else)\b
+      scope: keyword.control.flow.else.inline.python
+
+  target-list:
+    - include: line-continuation-or-pop
+    - match: ','
+      scope: punctuation.separator.target-list.python
+    - match: \(
+      push:
+        - include: comments
+        - match: ','
+          scope: punctuation.separator.target-list.python
+        - match: \)
+          pop: true
+        - include: name
+    - include: name
