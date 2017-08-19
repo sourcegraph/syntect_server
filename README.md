@@ -71,6 +71,7 @@ You can then run it via `docker run -it syntect_server` or publish it via
 - `InspiredGitHub`
 - `Solarized (dark)`
 - `Solarized (light)`
+- `Visual Studio Dark`
 - `base16-eighties.dark`
 - `base16-mocha.dark`
 - `base16-ocean.dark`
@@ -146,6 +147,7 @@ You can then run it via `docker run -it syntect_server` or publish it via
 - SQL (`sql`, `ddl`, `dml`)
 - Scala (`scala`, `sbt`)
 - Shell Script (Bash) (`sh`, `bash`, `zsh`, `.bash_aliases`, `.bash_functions`, `.bash_login`, `.bash_logout`, `.bash_profile`, `.bash_variables`, `.bashrc`, `.profile`, `.textmate_init`)
+- Swift (`swift`)
 - HTML (Tcl) (`adp`)
 - Tcl (`tcl`)
 - Textile (`textile`)
