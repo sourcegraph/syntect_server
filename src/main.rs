@@ -18,7 +18,7 @@ use syntect::highlighting::ThemeSet;
 use syntect::html::highlighted_snippet_for_string;
 
 thread_local! {
-    static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
+    static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_nonewlines();
 }
 
 lazy_static! {
