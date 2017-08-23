@@ -89,8 +89,7 @@ fn main() {
                     });
 
     rocket::ignite()
-        .mount("/", routes![index])
-        .mount("/health", routes![health])
+        .mount("/", routes![index, health])
         .catch(errors![not_found])
         .launch();
 }
