@@ -1,2 +1,1 @@
-docker tag syntect_server sourcegraph/syntect_server
 docker push sourcegraph/syntect_server
