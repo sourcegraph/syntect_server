@@ -1,10 +1,29 @@
 language: rust
+cache: cargo
+
 email:
   recipients:
     - stephen.gutekanst@gmail.com
-  on_success: change # default: change
-  on_failure: change # default: always
-rust:
-  - nightly
+  on_success: always # default: change
+  on_failure: always # default: always
+
 script:
   - cargo build --release
+
+branches:
+  only:
+    - master # important: do not publish docker images of non-master branches
+
+matrix:
+  include:
+    - os: linux
+      rust: nightly
+      env: TARGET=x86_64-unknown-linux-musl
+      dist: trusty
+      sudo: required
+      addons:
+        apt:
+          packages:
+            - musl
+            - musl-dev
+            - musl-tools
