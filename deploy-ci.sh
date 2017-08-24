@@ -1,2 +1,2 @@
-curl https://sh.rustup.rs -sSf | bash -s -- arg1 arg2
+apk add --update rust
 cargo build --release
