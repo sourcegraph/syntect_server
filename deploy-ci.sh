@@ -1,2 +1,2 @@
-apk add --update rust
+apk add --update rust cargo
 cargo build --release
