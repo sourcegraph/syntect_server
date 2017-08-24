@@ -4,9 +4,9 @@ steps:
       cargo build
     label: ':rust:'
 
-- wait
+  - wait
 
-# Build & deploy Docker image
+  # Build & deploy Docker image
   - command: ./deploy.sh
     branches: master
     label: ':rocket:'
