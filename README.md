@@ -1,4 +1,4 @@
-# Syntect Server [![Build status](https://badge.buildkite.com/33f3dd2f2b0449bfed8350123c39bde20bbb466e01984f4bda.svg)](https://buildkite.com/sourcegraph/syntect-server)
+# Syntect Server [![Build Status](https://travis-ci.org/sourcegraph/syntect_server.svg?branch=master)](https://travis-ci.org/sourcegraph/syntect_server)
 
 This is an HTTP server that exposes the Rust [Syntect](https://github.com/trishume/syntect) syntax highlighting library for use by other services. Send it some code, and it'll send you syntax-highlighted code in response.
 
