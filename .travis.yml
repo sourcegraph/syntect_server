@@ -8,6 +8,8 @@ email:
   on_failure: always # default: always
 
 script:
+  - curl https://sh.rustup.rs -sSf | bash -s -- -y
+  - rustup target add x86_64-unknown-linux-musl
   - cargo build --release --target x86_64-unknown-linux-musl
 
 after_success:
@@ -20,7 +22,6 @@ after_success:
 matrix:
   include:
     - os: linux
-      rust: nightly
       env: TARGET=x86_64-unknown-linux-musl
       dist: trusty
       sudo: required
