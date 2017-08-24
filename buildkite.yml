@@ -1,5 +1,0 @@
-steps:
-  # Build & deploy Docker image
-  - command: ./deploy-ci.sh
-    branches: master
-    label: ':rocket:'
