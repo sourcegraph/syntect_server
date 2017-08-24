@@ -37,6 +37,8 @@ Invoke `cargo build --release` and an optimized binary will be built (e.g. to `.
 
 ## Building docker image
 
+Note: Docker images are automatically published for the `master` branch by Travis. The below steps are for building / publishing manually.
+
 - Mac: `brew install filosottile/musl-cross/musl-cross`
 - `rustup target add x86_64-unknown-linux-musl`
 - `./build.sh` -> then `./publish.sh` to push the docker image.
