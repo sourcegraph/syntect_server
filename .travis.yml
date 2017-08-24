@@ -10,9 +10,12 @@ email:
 script:
   - cargo build --release
 
-branches:
-  only:
-    - master # important: do not publish docker images of non-master branches
+after_success:
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+    docker build -t "sourcegraph/syntect_server:ci" .;
+    docker push "sourcegraph/syntect_server:ci";
+    fi
 
 matrix:
   include:
