@@ -1,11 +1,4 @@
 steps:
-  # Run tests
-  - command: |-
-      cargo build
-    label: ':rust:'
-
-  - wait
-
   # Build & deploy Docker image
   - command: ./deploy-ci.sh
     branches: master
