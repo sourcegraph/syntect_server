@@ -7,6 +7,6 @@ steps:
   - wait
 
   # Build & deploy Docker image
-  - command: ./deploy.sh
+  - command: ./deploy-ci.sh
     branches: master
     label: ':rocket:'
