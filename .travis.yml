@@ -8,7 +8,7 @@ email:
   on_failure: always # default: always
 
 script:
-  - cargo build --release
+  - TARGET=x86_64-unknown-linux-musl cargo build --release
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
@@ -26,7 +26,6 @@ matrix:
   include:
     - os: linux
       rust: nightly
-      env: TARGET=x86_64-unknown-linux-musl
       dist: trusty
       sudo: required
       addons:
