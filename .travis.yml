@@ -33,4 +33,5 @@ matrix:
             - musl-dev
             - musl-tools
             - libunwind-setjmp0-dev
+            - liblzma
             - liblzma-dev
