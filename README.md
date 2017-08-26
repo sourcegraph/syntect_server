@@ -43,7 +43,7 @@ Note: Docker images are automatically published for the `master` branch by Travi
 - `rustup target add x86_64-unknown-linux-musl`
 - `./build.sh` -> then `./publish.sh` to push the docker image.
 
-You can then run it via `docker run -it syntect_server` or publish it via
+You can then run it via `docker run -it --sig-proxy=false syntect_server` or publish it via
 
 ## Code hygiene
 
