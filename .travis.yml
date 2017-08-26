@@ -8,10 +8,14 @@ email:
   on_failure: always # default: always
 
 script:
+  - cargo build --release --target x86_64-unknown-linux-musl
+
+before_install:
+  - brew update
+  - brew install filosottile/musl-cross/musl-cross
   - curl https://sh.rustup.rs -sSf | bash -s -- -y
   - rustup default nightly
   - rustup target add x86_64-unknown-linux-musl
-  - cargo build --release --target x86_64-unknown-linux-musl
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
@@ -22,19 +26,6 @@ after_success:
 
 matrix:
   include:
-    - os: linux
+    - os: osx
       env:
       - TARGET=x86_64-unknown-linux-musl
-      - LD_LIBRARY_PATH="/lib/x86_64-linux-gnu"
-      dist: trusty
-      sudo: required
-      addons:
-        apt:
-          packages:
-            - musl
-            - musl-dev
-            - musl-tools
-            - libunwind-setjmp0-dev
-            - libunwind8
-            - liblzma5
-            - liblzma-dev
