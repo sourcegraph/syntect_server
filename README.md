@@ -25,6 +25,10 @@ Technologies:
 
 [gosyntect](https://github.com/sourcegraph/gosyntect) is a Go package + CLI program to make requests against syntect_server.
 
+## Configuration
+
+By default on startup, `syntect_server` will list all features (themes + file types) it supports. This can be disabled by setting `QUIET=true` in the environment.
+
 ## Development
 
 1. [Install Rust **nightly**](https://rocket.rs/guide/getting-started/#installing-rust).

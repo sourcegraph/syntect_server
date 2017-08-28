@@ -16,6 +16,7 @@ use rocket_contrib::{Json, Value};
 use syntect::parsing::SyntaxSet;
 use syntect::highlighting::ThemeSet;
 use syntect::html::highlighted_snippet_for_string;
+use std::env;
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_nonewlines();
@@ -69,7 +70,7 @@ fn not_found() -> Json<Value> {
     Json(json!({"error": "resource not found"}))
 }
 
-fn main() {
+fn list_features() {
     // List embedded themes.
     println!("## Embedded themes:");
     println!("");
@@ -87,6 +88,14 @@ fn main() {
                         }
                         println!("");
                     });
+}
+
+fn main() {
+    // Only list features if QUIET != "true"
+    match env::var("QUIET") {
+        Ok(v) => if v != "true" { list_features() },
+        Err(_) => list_features(),
+    };
 
     rocket::ignite()
         .mount("/", routes![index, health])
