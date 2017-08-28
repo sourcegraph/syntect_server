@@ -12,7 +12,7 @@ script:
 
 before_install:
   - brew update
-  - brew install filosottile/musl-cross/musl-cross
+  - brew install -v filosottile/musl-cross/musl-cross
   - curl https://sh.rustup.rs -sSf | bash -s -- -y
   - rustup default nightly
   - rustup target add x86_64-unknown-linux-musl
