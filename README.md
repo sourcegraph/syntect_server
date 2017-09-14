@@ -78,6 +78,9 @@ You can then run it via `docker run -it syntect_server`.
 - `Monokai`
 - `Solarized (dark)`
 - `Solarized (light)`
+- `Sourcegraph`
+- `TypeScript`
+- `TypeScriptReact`
 - `Visual Studio`
 - `Visual Studio Dark`
 - `base16-eighties.dark`
