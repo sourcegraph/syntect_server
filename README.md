@@ -55,8 +55,9 @@ You can then run it via `docker run -it syntect_server`.
 
 ## Adding themes
 
-- Copy a `.tmTheme` file anywhere under `./syntect/testdata` (make a new dir if needed).
+- Copy a `.tmTheme` file anywhere under `./syntect/testdata` (make a new dir if needed) [in our fork](https://github.com/slimsag/syntect).
 - `cd syntect && make assets`
+- In this repo, `cargo update -p syntect`.
 - Build a new binary.
 
 ## Adding languages:
@@ -68,8 +69,8 @@ You can then run it via `docker run -it syntect_server`.
   - Search for `Plugin Development: Convert Syntax to .sublime-syntax` command.
   - Continue with steps below.
 - With a `.sublime-syntax` file:
-  - Save the file anywhere under `./syntect/testdata/Packages` (make a new dir if needed).
-  - `cd syntect && make assets`
+  - Save the file anywhere under `Packages/MySyntax` [in our fork of sublimehq/Packages](https://github.com/slimsag/Packages).
+  - In our fork of syntect, update the git submodule and run `make assets`.
   - Build a new binary.
 
 ## Embedded themes:
