@@ -1,6 +1,0 @@
-// -*- Mode: Go -*-
-
-func blah() error {
-  test := "wow"
-  return ioutil.WriteFile(test, hi, 0700)
-}

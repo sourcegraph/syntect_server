@@ -1,8 +1,0 @@
-<snippet>
-	<content><![CDATA[
-assert!(${1});
-]]></content>
-	<tabTrigger>assert</tabTrigger>
-	<scope>source.rust</scope>
-	<description>assert!(…)</description>
-</snippet>

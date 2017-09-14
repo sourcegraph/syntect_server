@@ -1,6 +1,0 @@
-<snippet>
-	<content><![CDATA[Ok(${1:result})]]></content>
-	<tabTrigger>Ok</tabTrigger>
-	<scope>source.rust</scope>
-	<description>Ok(…)</description>
-</snippet>

@@ -1,3 +1,0 @@
-Fixes in Spacegray 1.1.2:
-
-* All Spacegray themes should be now working properly in ST2

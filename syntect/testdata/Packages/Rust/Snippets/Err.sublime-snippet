@@ -1,6 +1,0 @@
-<snippet>
-	<content><![CDATA[Err(${1})]]></content>
-	<tabTrigger>Err</tabTrigger>
-	<scope>source.rust</scope>
-	<description>Err(…)</description>
-</snippet>
