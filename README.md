@@ -75,8 +75,10 @@ You can then run it via `docker run -it syntect_server`.
 ## Embedded themes:
 
 - `InspiredGitHub`
+- `Monokai`
 - `Solarized (dark)`
 - `Solarized (light)`
+- `Visual Studio`
 - `Visual Studio Dark`
 - `base16-eighties.dark`
 - `base16-mocha.dark`
@@ -112,7 +114,7 @@ You can then run it via `docker run -it syntect_server`.
 - JavaDoc (``)
 - Java Properties (`properties`)
 - JSON (`json`, `sublime-settings`, `sublime-menu`, `sublime-keymap`, `sublime-mousemap`, `sublime-theme`, `sublime-build`, `sublime-project`, `sublime-completions`, `sublime-commands`, `sublime-macro`)
-- JavaScript (`js`, `htc`)
+- JavaScript (Babel) (`js`, `jsx`, `babel`, `es6`)
 - Regular Expressions (Javascript) (``)
 - BibTeX (`bib`)
 - LaTeX Log (``)
