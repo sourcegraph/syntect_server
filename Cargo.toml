@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Stephen Gutekanst <stephen.gutekanst@gmail.com>"]
 
 [dependencies]
-syntect = { path = "./syntect" }
+syntect = { git = "https://github.com/slimsag/syntect" }
 rocket = "0.3"
 rocket_codegen = "0.3"
 rocket_contrib = "0.3"
