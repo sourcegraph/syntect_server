@@ -45,11 +45,17 @@ fn index(q: Json<Query>) -> Json<Value> {
 	        None => return Json(json!({"error": "invalid theme"})),
 	    };
 
-	    // Determine syntax definition by extension.
-	    let syntax_def = match syntax_set.find_syntax_by_extension(&q.extension) {
-	        Some(v) => v,
-	        None => return Json(json!({"error": "invalid extension"})),
-	    };
+        // Fall back: Determine syntax definition by first line.
+        let syntax_by_first_line_def = match syntax_set.find_syntax_by_first_line(&q.code) {
+            Some(v) => v,
+            None => return Json(json!({"error": "invalid syntax"})),
+        };
+
+        // Determine syntax definition by extension.
+        let syntax_def = match syntax_set.find_syntax_by_extension(&q.extension) {
+            Some(v) => v,
+            None => syntax_by_first_line_def,
+        };
 
 	    // TODO(slimsag): return the theme's background color (and other info??) to caller?
 	    // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
