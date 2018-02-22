@@ -52,7 +52,7 @@ fn index(q: Json<Query>) -> Json<Value> {
                 // Fall back: Determine syntax definition by first line.
                 match syntax_set.find_syntax_by_first_line(&q.code) {
                     Some(v) => v,
-                    None => return Json(json!({"error": "invalid syntax"})),
+                    None => return Json(json!({"error": "invalid extension"})),
             },
         };
 
