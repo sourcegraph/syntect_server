@@ -76,7 +76,10 @@ You can then run it via `docker run -it syntect_server`.
   - Continue with steps below.
 - With a `.sublime-syntax` file:
   - Save the file anywhere under `Packages/MySyntax` [in our fork of sublimehq/Packages](https://github.com/slimsag/Packages).
-  - In our fork of syntect, update the git submodule and run `make assets`.
+  - In our fork of syntect
+    - update the git submodule 
+    - run `make assets`
+    - commit those changes and submit a PR to the syntect fork
   - Build a new binary.
 
 ## Embedded themes:
