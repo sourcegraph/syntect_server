@@ -607,7 +607,7 @@ dependencies = [
 name = "syntect_server"
 version = "0.1.0"
 dependencies = [
- "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rayon 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_codegen 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
