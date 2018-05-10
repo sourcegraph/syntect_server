@@ -19,7 +19,7 @@ use syntect::html::highlighted_snippet_for_string;
 use std::env;
 
 thread_local! {
-    static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_nonewlines();
+    static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
 }
 
 lazy_static! {
