@@ -48,7 +48,7 @@ fn index(q: Json<Query>) -> Json<Value> {
         // bytes? e.g. via `load_from_reader`.
         let theme = match THEME_SET.themes.get(&q.theme) {
             Some(v) => v,
-            None => return Json(json!({"error": "invalid theme"})),
+            None => return Json(json!({"error": "invalid theme", "code": "invalid_theme"})),
         };
 
         // Determine syntax definition by extension.
@@ -113,7 +113,7 @@ fn health() -> &'static str {
 
 #[error(404)]
 fn not_found() -> Json<Value> {
-    Json(json!({"error": "resource not found"}))
+    Json(json!({"error": "resource not found", "code": "resource_not_found"}))
 }
 
 fn list_features() {
