@@ -642,8 +642,8 @@ dependencies = [
 
 [[package]]
 name = "syntect"
-version = "2.0.1"
-source = "git+https://github.com/slimsag/syntect#b7e2a4e3d380e3b9963848f7d9612c0cff1dd9ec"
+version = "2.1.0"
+source = "git+https://github.com/slimsag/syntect#261e6cab491753609d0fd0bae6f3d737fe99d5f6"
 dependencies = [
  "bincode 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -672,7 +672,7 @@ dependencies = [
  "serde 1.0.48 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.48 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "syntect 2.0.1 (git+https://github.com/slimsag/syntect)",
+ "syntect 2.1.0 (git+https://github.com/slimsag/syntect)",
 ]
 
 [[package]]
@@ -894,7 +894,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum smallvec 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "03dab98ab5ded3a8b43b2c80751194608d0b2aa0f1d46cf95d1c35e192844aa7"
 "checksum state 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7345c971d1ef21ffdbd103a75990a15eb03604fc8b8852ca8cb418ee1a099028"
 "checksum syn 0.13.7 (registry+https://github.com/rust-lang/crates.io-index)" = "61b8f1b737f929c6516ba46a3133fd6d5215ad8a62f66760f851f7048aebedfb"
-"checksum syntect 2.0.1 (git+https://github.com/slimsag/syntect)" = "<none>"
+"checksum syntect 2.1.0 (git+https://github.com/slimsag/syntect)" = "<none>"
 "checksum time 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "a15375f1df02096fb3317256ce2cee6a1f42fc84ea5ad5fc8c421cfe40c73098"
 "checksum toml 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "a0263c6c02c4db6c8f7681f9fd35e90de799ebd4cfdeab77a38f4ff6b3d8c0d9"
 "checksum traitobject 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "efd1f82c56340fdf16f2a953d7bda4f8fdffba13d93b00844c25572110b26079"
