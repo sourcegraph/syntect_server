@@ -13,10 +13,11 @@ extern crate serde_json;
 extern crate syntect;
 
 use rocket_contrib::{Json, Value};
-use syntect::parsing::SyntaxSet;
+use std::env;
+use std::path::Path;
 use syntect::highlighting::ThemeSet;
 use syntect::html::highlighted_snippet_for_string;
-use std::env;
+use syntect::parsing::SyntaxSet;
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -28,7 +29,12 @@ lazy_static! {
 
 #[derive(Deserialize)]
 struct Query {
+    // Deprecated field with a default empty string value, kept for backwards
+    // compatability with old clients.
+    #[serde(default)]
     extension: String,
+
+    filepath: String,
     theme: String,
     code: String,
 }
@@ -46,14 +52,49 @@ fn index(q: Json<Query>) -> Json<Value> {
         };
 
         // Determine syntax definition by extension.
-        let syntax_def = match syntax_set.find_syntax_by_extension(&q.extension) {
-            Some(v) => v,
-            None =>
-                // Fall back: Determine syntax definition by first line.
-                match syntax_set.find_syntax_by_first_line(&q.code) {
-                    Some(v) => v,
-                    None => return Json(json!({"error": "invalid extension"})),
-            },
+        let syntax_def = if q.extension != "" {
+            // Legacy codepath, kept for backwards-compatability with old clients.
+            match syntax_set.find_syntax_by_extension(&q.extension) {
+                Some(v) => v,
+                None =>
+                    // Fall back: Determine syntax definition by first line.
+                    match syntax_set.find_syntax_by_first_line(&q.code) {
+                        Some(v) => v,
+                        None => return Json(json!({"error": "invalid extension"})),
+                },
+            }
+        } else {
+            // Split the input path ("foo/myfile.go") into file name
+            // ("myfile.go") and extension ("go").
+            let path = Path::new(&q.filepath);
+            let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let extension = path.extension().and_then(|x| x.to_str()).unwrap_or("");
+
+            // To determine the syntax definition, we must first check using the
+            // filename as some syntaxes match an "extension" that is actually a
+            // whole file name (e.g. "Dockerfile" or "CMakeLists.txt"); see e.g. https://github.com/trishume/syntect/pull/170
+            //
+            // After that, if we do not find any syntax, we can actually check by
+            // extension and lastly via the first line of the code.
+
+            // First try to find a syntax whose "extension" matches our file
+            // name. This is done due to some syntaxes matching an "extension"
+            // that is actually a whole file name (e.g. "Dockerfile" or "CMakeLists.txt")
+            // see https://github.com/trishume/syntect/pull/170
+            match syntax_set.find_syntax_by_extension(file_name) {
+                Some(v) => v,
+                None => 
+                    // Now try to find the syntax by the actual file extension.
+                    match syntax_set.find_syntax_by_extension(extension) {
+                        Some(v) => v,
+                        None =>
+                            // Fall back: Determine syntax definition by first line.
+                            match syntax_set.find_syntax_by_first_line(&q.code) {
+                                Some(v) => v,
+                                None => return Json(json!({"error": "invalid extension"})),
+                        },
+                    }
+            }
         };
 
         // TODO(slimsag): return the theme's background color (and other info??) to caller?

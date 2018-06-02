@@ -13,7 +13,7 @@ Technologies:
 ## API
 
 - `POST` to `/` with `Content-Type: application/json`. The following fields are required:
-  - `extension` string, e.g. `go`, see "Supported file extensions" section below.
+  - `filepath` string, e.g. `the/file.go` or `file.go` or `Dockerfile`, see "Supported file extensions" section below.
   - `theme` string, e.g. `Solarized (dark)`, see "Embedded themes" section below.
   - `code` string, i.e. the literal code to highlight.
 - The response is a JSON object (as long as request was a JSON object with all required fields present) containing:
