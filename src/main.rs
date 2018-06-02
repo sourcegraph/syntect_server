@@ -52,6 +52,7 @@ fn index(q: Json<Query>) -> Json<Value> {
         };
 
         // Determine syntax definition by extension.
+        let mut is_plaintext = false;
         let syntax_def = if q.extension != "" {
             // Legacy codepath, kept for backwards-compatability with old clients.
             match syntax_set.find_syntax_by_extension(&q.extension) {
@@ -91,7 +92,13 @@ fn index(q: Json<Query>) -> Json<Value> {
                             // Fall back: Determine syntax definition by first line.
                             match syntax_set.find_syntax_by_first_line(&q.code) {
                                 Some(v) => v,
-                                None => return Json(json!({"error": "invalid extension"})),
+                                None => {
+                                    is_plaintext = true;
+
+                                    // Render plain text, so the user gets the same HTML
+                                    // output structure.
+                                    syntax_set.find_syntax_plain_text()
+                                }
                         },
                     }
             }
@@ -101,8 +108,9 @@ fn index(q: Json<Query>) -> Json<Value> {
         // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
 
         Json(json!({
-	        "data": highlighted_snippet_for_string(&q.code, &syntax_def, theme),
-	    }))
+            "data": highlighted_snippet_for_string(&q.code, &syntax_def, theme),
+            "plaintext": is_plaintext,
+        }))
     })
 }
 
