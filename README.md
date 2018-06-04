@@ -1,4 +1,4 @@
-# Syntect Server [![Build Status](https://travis-ci.org/sourcegraph/syntect_server.svg?branch=master)](https://travis-ci.org/sourcegraph/syntect_server)
+# Syntect Server
 
 This is an HTTP server that exposes the Rust [Syntect](https://github.com/trishume/syntect) syntax highlighting library for use by other services. Send it some code, and it'll send you syntax-highlighted code in response.
 
