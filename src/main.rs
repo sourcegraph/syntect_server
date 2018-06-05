@@ -34,7 +34,10 @@ struct Query {
     #[serde(default)]
     extension: String,
 
+    // default empty string value for backwards compat with clients who do not specify this field.
+    #[serde(default)]
     filepath: String,
+
     theme: String,
     code: String,
 }
