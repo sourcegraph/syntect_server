@@ -56,6 +56,6 @@ docker push sourcegraph/syntect_server
 echo docker push sourcegraph/syntect_server:$VERSION
 docker push sourcegraph/syntect_server:$VERSION
 
-docker tag sourcegraph/syntect_server us.gcr.io/sourcegraph-dev/syntect_server
+docker tag sourcegraph/syntect_server us.gcr.io/sourcegraph-dev/syntect_server:$VERSION
 echo docker push us.gcr.io/sourcegraph-dev/syntect_server:$VERSION
 docker push us.gcr.io/sourcegraph-dev/syntect_server:$VERSION
