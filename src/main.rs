@@ -16,8 +16,13 @@ use rocket_contrib::{Json, Value};
 use std::env;
 use std::path::Path;
 use syntect::highlighting::ThemeSet;
-use syntect::html::highlighted_snippet_for_string;
 use syntect::parsing::SyntaxSet;
+
+use std::fmt::Write;
+use syntect::easy::HighlightLines;
+use syntect::highlighting::{Color, Theme};
+use syntect::html::{styles_to_coloured_html, IncludeBackground};
+use syntect::parsing::SyntaxDefinition;
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -111,7 +116,7 @@ fn index(q: Json<Query>) -> Json<Value> {
         // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
 
         Json(json!({
-            "data": highlighted_snippet_for_string(&q.code, &syntax_def, theme),
+            "data": highlighted_snippet_for_string_newlines(&q.code, &syntax_def, theme),
             "plaintext": is_plaintext,
         }))
     })
@@ -145,6 +150,31 @@ fn list_features() {
         }
         println!("");
     });
+}
+
+/// The same as `syntect::html::highlighted_snippet_for_string` except it is
+/// for syntaxes compiled for the newline character mode (`SyntaxSet::load_defaults_newlines()`).
+pub fn highlighted_snippet_for_string_newlines(
+    s: &str,
+    syntax: &SyntaxDefinition,
+    theme: &Theme,
+) -> String {
+    let mut output = String::new();
+    let mut highlighter = HighlightLines::new(syntax, theme);
+    let c = theme.settings.background.unwrap_or(Color::WHITE);
+    write!(
+        output,
+        "<pre style=\"background-color:#{:02x}{:02x}{:02x};\">\n",
+        c.r, c.g, c.b
+    ).unwrap();
+    for line in s.lines() {
+        let line = line.to_owned() + "\n";
+        let regions = highlighter.highlight(&line);
+        let html = styles_to_coloured_html(&regions[..], IncludeBackground::IfDifferent(c));
+        output.push_str(&html);
+    }
+    output.push_str("</pre>");
+    output
 }
 
 fn main() {
