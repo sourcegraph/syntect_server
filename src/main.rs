@@ -170,16 +170,10 @@ pub fn highlighted_snippet_for_string_newlines(
     for line in s.lines() {
         let line = line.to_owned() + "\n";
         let regions = highlighter.highlight(&line);
-        let mut html = styles_to_coloured_html(&regions[..], IncludeBackground::IfDifferent(c));
-        if html.ends_with("\n") {
-            let _ = html.pop();
-            output.push_str(&html);
-            output.push_str("\n");
-        } else {
-            output.push_str(&html);
-        }
+        let html = styles_to_coloured_html(&regions[..], IncludeBackground::IfDifferent(c));
+        output.push_str(&html);
     }
-    output.push_str("</pre>\n");
+    output.push_str("</pre>");
     output
 }
 
