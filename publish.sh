@@ -53,6 +53,7 @@ VERSION=$(git rev-parse --short HEAD)
 echo docker push sourcegraph/syntect_server
 docker push sourcegraph/syntect_server
 
+docker tag sourcegraph/syntect_server sourcegraph/syntect_server:$VERSION
 echo docker push sourcegraph/syntect_server:$VERSION
 docker push sourcegraph/syntect_server:$VERSION
 
