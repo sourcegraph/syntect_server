@@ -8,6 +8,7 @@ ADD ./target/x86_64-unknown-linux-musl/release/syntect_server /
 EXPOSE 9238
 ENV ROCKET_ENV "production"
 ENV ROCKET_PORT 9238
+ENV ROCKET_LIMITS "{json=10485760}"
 
 RUN addgroup -S sourcegraph && adduser -S -G sourcegraph -h /home/sourcegraph sourcegraph
 USER sourcegraph
