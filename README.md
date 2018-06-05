@@ -218,6 +218,5 @@ Run `./publish.sh` after merging your changes.
 - Thrift (`thrift`)
 - TypeScript (`ts`)
 - TypeScriptReact (`tsx`)
-- Vue Component (`vue`)
 - XML (`xml`, `xsd`, `xslt`, `tld`, `dtml`, `rss`, `opml`, `svg`)
 - YAML (`yaml`, `yml`, `sublime-syntax`)
