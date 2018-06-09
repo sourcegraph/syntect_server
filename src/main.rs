@@ -167,8 +167,7 @@ pub fn highlighted_snippet_for_string_newlines(
         "<pre style=\"background-color:#{:02x}{:02x}{:02x};\">\n",
         c.r, c.g, c.b
     ).unwrap();
-    for line in s.lines() {
-        let line = line.to_owned() + "\n";
+    for line in LinesWithEndings::from(s) {
         let regions = highlighter.highlight(&line);
         let html = styles_to_coloured_html(&regions[..], IncludeBackground::IfDifferent(c));
         output.push_str(&html);
@@ -190,4 +189,35 @@ fn main() {
         .mount("/", routes![index, health])
         .catch(errors![not_found])
         .launch();
+}
+
+
+/// Iterator yielding every line in a string. The line includes newline character(s).
+/// 
+/// Borrowed from https://stackoverflow.com/a/40457615
+pub struct LinesWithEndings<'a> {
+    input: &'a str,
+}
+
+impl<'a> LinesWithEndings<'a> {
+    pub fn from(input: &'a str) -> LinesWithEndings<'a> {
+        LinesWithEndings {
+            input: input,
+        }
+    }
+}
+
+impl<'a> Iterator for LinesWithEndings<'a> {
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        if self.input.is_empty() {
+            return None;
+        }
+        let split = self.input.find('\n').map(|i| i + 1).unwrap_or(self.input.len());
+        let (line, rest) = self.input.split_at(split);
+        self.input = rest;
+        Some(line)
+    }
 }
