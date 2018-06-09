@@ -61,7 +61,7 @@ fn index(q: Json<Query>) -> Json<Value> {
 
         // Determine syntax definition by extension.
         let mut is_plaintext = false;
-        let syntax_def = if q.extension != "" {
+        let syntax_def = if q.filepath == "" {
             // Legacy codepath, kept for backwards-compatability with old clients.
             match syntax_set.find_syntax_by_extension(&q.extension) {
                 Some(v) => v,
