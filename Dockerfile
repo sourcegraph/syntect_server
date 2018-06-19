@@ -9,6 +9,7 @@ EXPOSE 9238
 ENV ROCKET_ENV "production"
 ENV ROCKET_PORT 9238
 ENV ROCKET_LIMITS "{json=10485760}"
+ENV ROCKET_SECRET_KEY "+SecretKeyIsIrrelevantAndUnusedPleaseIgnore="
 
 RUN addgroup -S sourcegraph && adduser -S -G sourcegraph -h /home/sourcegraph sourcegraph
 USER sourcegraph
