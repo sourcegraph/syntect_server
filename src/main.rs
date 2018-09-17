@@ -127,7 +127,7 @@ fn health() -> &'static str {
     "OK"
 }
 
-#[error(404)]
+#[catch(404)]
 fn not_found() -> Json<Value> {
     Json(json!({"error": "resource not found", "code": "resource_not_found"}))
 }
@@ -187,7 +187,7 @@ fn main() {
 
     rocket::ignite()
         .mount("/", routes![index, health])
-        .catch(errors![not_found])
+        .catch(catchers![not_found])
         .launch();
 }
 
