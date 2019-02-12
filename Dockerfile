@@ -16,6 +16,7 @@ ENTRYPOINT ["/sbin/tini", "--"]
 COPY --from=builder /home/rust/src/target/x86_64-unknown-linux-musl/release/syntect_server /
 EXPOSE 9238
 ENV ROCKET_ENV "production"
+ENV QUIET true
 ENV ROCKET_PORT 9238
 ENV ROCKET_LIMITS "{json=10485760}"
 
