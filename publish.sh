@@ -40,10 +40,10 @@ fi
 require_clean_work_tree "publish"
 
 while true; do
-    read -p "Did you already run ./build.sh or ./build.debian.sh? [y/n] " yn
+    read -p "Did you already run ./build.sh? [y/n] " yn
     case $yn in
         [Yy]* ) break;;
-        [Nn]* ) echo "Please run ./build.sh or ./build.debian.sh first." && exit;;
+        [Nn]* ) echo "Please run ./build.sh first." && exit;;
         * ) echo "Please answer yes or no.";;
     esac
 done
