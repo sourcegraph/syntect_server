@@ -21,7 +21,7 @@ ENV ROCKET_LIMITS "{json=10485760}"
 
 # syntect_server does not need a secret key since it uses no cookies, but
 # without one set Rocket emits a warning.
-ENV ROCKET_SECRET_KEY "+SecretKeyIsIrrelevantAndUnusedPleaseIgnore="
+ENV ROCKET_SECRET_KEY "SeerutKeyIsI7releuantAndknvsuZPluaseIgnorYA="
 
 RUN addgroup -S sourcegraph && adduser -S -G sourcegraph -h /home/sourcegraph sourcegraph
 USER sourcegraph
