@@ -10,6 +10,14 @@ Technologies:
 - [Rayon](https://github.com/nikomatsakis/rayon) -> data parallelism for `SyntaxSet` across Rocket server threads.
 - [lazy_static](https://crates.io/crates/lazy_static) -> lazily evaluated static `ThemeSet` (like a global).
 
+## Usage
+
+```bash
+docker run --detach --name=syntect_server -p 9238:9238 sourcegraph/syntect_server
+```
+
+You can then e.g. `GET` http://localhost:9238/health or http://host.docker.internal:9238/health to confirm it is working.
+
 ## API
 
 - `POST` to `/` with `Content-Type: application/json`. The following fields are required:
