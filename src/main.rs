@@ -13,7 +13,7 @@ use std::env;
 use std::path::Path;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
-use std::panic;
+
 use std::fmt::Write;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Color, Theme};
@@ -45,20 +45,6 @@ struct Query {
 
 #[post("/", format = "application/json", data = "<q>")]
 fn index(q: Json<Query>) -> JsonValue {
-    // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
-    // and instead Syntect would return Result types when failures occur. This
-    // will require some non-trivial work upstream:
-    // https://github.com/trishume/syntect/issues/98
-    let result = panic::catch_unwind(|| {
-        highlight(q)
-    });
-    match result {
-        Ok(v) => v,
-        Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
-    }
-}
-
-fn highlight(q: Json<Query>) -> JsonValue {
     SYNTAX_SET.with(|syntax_set| {
         // Determine theme to use.
         //
