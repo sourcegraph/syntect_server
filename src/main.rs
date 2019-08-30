@@ -1,19 +1,23 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+#![feature(plugin)]
+#![plugin(rocket_codegen)]
 
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 extern crate rayon;
-#[macro_use] extern crate rocket;
-#[macro_use] extern crate rocket_contrib;
-#[macro_use] extern crate serde_derive;
+extern crate rocket;
+#[macro_use]
+extern crate rocket_contrib;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 extern crate syntect;
 
-use rocket_contrib::json::{Json, JsonValue};
+use rocket_contrib::{Json, Value};
 use std::env;
 use std::path::Path;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
-use std::panic;
+
 use std::fmt::Write;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::{Color, Theme};
@@ -44,21 +48,7 @@ struct Query {
 }
 
 #[post("/", format = "application/json", data = "<q>")]
-fn index(q: Json<Query>) -> JsonValue {
-    // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
-    // and instead Syntect would return Result types when failures occur. This
-    // will require some non-trivial work upstream:
-    // https://github.com/trishume/syntect/issues/98
-    let result = panic::catch_unwind(|| {
-        highlight(q)
-    });
-    match result {
-        Ok(v) => v,
-        Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
-    }
-}
-
-fn highlight(q: Json<Query>) -> JsonValue {
+fn index(q: Json<Query>) -> Json<Value> {
     SYNTAX_SET.with(|syntax_set| {
         // Determine theme to use.
         //
@@ -66,7 +56,7 @@ fn highlight(q: Json<Query>) -> JsonValue {
         // bytes? e.g. via `load_from_reader`.
         let theme = match THEME_SET.themes.get(&q.theme) {
             Some(v) => v,
-            None => return json!({"error": "invalid theme", "code": "invalid_theme"}),
+            None => return Json(json!({"error": "invalid theme", "code": "invalid_theme"})),
         };
 
         // Determine syntax definition by extension.
@@ -79,7 +69,7 @@ fn highlight(q: Json<Query>) -> JsonValue {
                     // Fall back: Determine syntax definition by first line.
                     match syntax_set.find_syntax_by_first_line(&q.code) {
                         Some(v) => v,
-                        None => return json!({"error": "invalid extension"}),
+                        None => return Json(json!({"error": "invalid extension"})),
                 },
             }
         } else {
@@ -125,10 +115,10 @@ fn highlight(q: Json<Query>) -> JsonValue {
         // TODO(slimsag): return the theme's background color (and other info??) to caller?
         // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
 
-        json!({
+        Json(json!({
             "data": highlighted_snippet_for_string_newlines(&q.code, &syntax_def, theme),
             "plaintext": is_plaintext,
-        })
+        }))
     })
 }
 
@@ -138,8 +128,8 @@ fn health() -> &'static str {
 }
 
 #[catch(404)]
-fn not_found() -> JsonValue {
-    json!({"error": "resource not found", "code": "resource_not_found"})
+fn not_found() -> Json<Value> {
+    Json(json!({"error": "resource not found", "code": "resource_not_found"}))
 }
 
 fn list_features() {
@@ -197,7 +187,7 @@ fn main() {
 
     rocket::ignite()
         .mount("/", routes![index, health])
-        .register(catchers![not_found])
+        .catch(catchers![not_found])
         .launch();
 }
 
