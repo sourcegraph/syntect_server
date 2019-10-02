@@ -1,10 +1,33 @@
-FROM alpine:latest
+########################################
+# Rust nightly + musl in a build stage #
+########################################
+# Select specific Rust nightly version
+FROM rust:1.32@sha256:741edb658fac7ac8a978bb30f83fb5d3a7b8e8fc35105a79f424b5671cca724a as our-rust-nightly
+RUN rustup default nightly-2018-11-29
+
+# Install musl compiler toolchain
+RUN apt-get -y update && apt-get install --no-install-recommends -y musl-tools=1.1.16-3
+RUN rustup target add x86_64-unknown-linux-musl
+
+###################################
+# Build syntect_server statically #
+###################################
+FROM our-rust-nightly as ss
+COPY . /repo
+WORKDIR /repo
+RUN env 'CC_x86_64-unknown-linux-musl=musl-gcc' cargo rustc --release --target x86_64-unknown-linux-musl -- -C 'linker=musl-gcc'
+RUN cp ./target/x86_64-unknown-linux-musl/release/syntect_server /syntect_server
+
+#######################
+# Compile final image #
+#######################
+FROM sourcegraph/alpine:3.9@sha256:e9264d4748e16de961a2b973cc12259dee1d33473633beccb1dfb8a0e62c6459
+COPY --from=ss syntect_server /
 
 # Use tini (https://github.com/krallin/tini) for proper signal handling.
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini=0.18.0-r0
 ENTRYPOINT ["/sbin/tini", "--"]
 
-ADD ./target/x86_64-unknown-linux-musl/release/syntect_server /
 EXPOSE 9238
 ENV ROCKET_ENV "production"
 ENV ROCKET_PORT 9238
@@ -22,8 +45,5 @@ ENV ROCKET_SECRET_KEY "+SecretKeyIsIrrelevantAndUnusedPleaseIgnore="
 # See https://github.com/sourcegraph/sourcegraph/issues/2615 for details on
 # what we observed when this was enabled with the default 5s.
 ENV ROCKET_KEEP_ALIVE=0
-
-RUN addgroup -S sourcegraph && adduser -S -G sourcegraph -h /home/sourcegraph sourcegraph
-USER sourcegraph
 
 CMD ["/syntect_server"]
