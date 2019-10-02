@@ -49,21 +49,11 @@ By default on startup, `syntect_server` will list all features (themes + file ty
 
 ## Building
 
-Invoke `cargo build --release` and an optimized binary will be built (e.g. to `./target/debug/syntect_server`).
+Invoke `cargo build --release` and an optimized binary will be built (e.g. to `./target/release/syntect_server`).
 
 ## Building docker image
 
-- MacOS
-  - `brew install filosottile/musl-cross/musl-cross`
-  - `rustup target add x86_64-unknown-linux-musl`
-  - `./build.sh` -> then `./publish.sh` to push the docker image.
-
-- Debian / Ubuntu
-  - `sudo apt-get install musl-tools`
-  - `rustup target add x86_64-unknown-linux-musl`
-  - `./build.debian.sh` -> then `./publish.sh` to push the docker image.
-
-You can then run it via `docker run -it syntect_server`.
+`./build.sh` will build your current repository checkout into a final Docker image.
 
 ## Publishing docker image
 
@@ -91,7 +81,7 @@ Run `./publish.sh` after merging your changes.
 - With a `.sublime-syntax` file:
   - Save the file anywhere under `Packages/MySyntax` [in our fork of sublimehq/Packages](https://github.com/slimsag/Packages).
   - In our fork of syntect
-    - update the git submodule 
+    - update the git submodule
     - run `make assets`
     - commit those changes and submit a PR to the syntect fork
   - Build a new binary.
