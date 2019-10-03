@@ -1,18 +1,14 @@
-#![feature(plugin)]
-#![plugin(rocket_codegen)]
+#![feature(proc_macro_hygiene, decl_macro)]
 
-#[macro_use]
-extern crate lazy_static;
+#[macro_use] extern crate lazy_static;
 extern crate rayon;
-extern crate rocket;
-#[macro_use]
-extern crate rocket_contrib;
-#[macro_use]
-extern crate serde_derive;
+#[macro_use] extern crate rocket;
+#[macro_use] extern crate rocket_contrib;
+#[macro_use] extern crate serde_derive;
 extern crate serde_json;
 extern crate syntect;
 
-use rocket_contrib::{Json, Value};
+use rocket_contrib::json::{Json, JsonValue};
 use std::env;
 use std::path::Path;
 use syntect::highlighting::ThemeSet;
@@ -48,7 +44,7 @@ struct Query {
 }
 
 #[post("/", format = "application/json", data = "<q>")]
-fn index(q: Json<Query>) -> Json<Value> {
+fn index(q: Json<Query>) -> JsonValue {
     SYNTAX_SET.with(|syntax_set| {
         // Determine theme to use.
         //
@@ -56,7 +52,7 @@ fn index(q: Json<Query>) -> Json<Value> {
         // bytes? e.g. via `load_from_reader`.
         let theme = match THEME_SET.themes.get(&q.theme) {
             Some(v) => v,
-            None => return Json(json!({"error": "invalid theme", "code": "invalid_theme"})),
+            None => return json!({"error": "invalid theme", "code": "invalid_theme"}),
         };
 
         // Determine syntax definition by extension.
@@ -69,7 +65,7 @@ fn index(q: Json<Query>) -> Json<Value> {
                     // Fall back: Determine syntax definition by first line.
                     match syntax_set.find_syntax_by_first_line(&q.code) {
                         Some(v) => v,
-                        None => return Json(json!({"error": "invalid extension"})),
+                        None => return json!({"error": "invalid extension"}),
                 },
             }
         } else {
@@ -115,10 +111,10 @@ fn index(q: Json<Query>) -> Json<Value> {
         // TODO(slimsag): return the theme's background color (and other info??) to caller?
         // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
 
-        Json(json!({
+        json!({
             "data": highlighted_snippet_for_string_newlines(&q.code, &syntax_def, theme),
             "plaintext": is_plaintext,
-        }))
+        })
     })
 }
 
@@ -128,8 +124,8 @@ fn health() -> &'static str {
 }
 
 #[catch(404)]
-fn not_found() -> Json<Value> {
-    Json(json!({"error": "resource not found", "code": "resource_not_found"}))
+fn not_found() -> JsonValue {
+    json!({"error": "resource not found", "code": "resource_not_found"})
 }
 
 fn list_features() {
@@ -187,7 +183,7 @@ fn main() {
 
     rocket::ignite()
         .mount("/", routes![index, health])
-        .catch(catchers![not_found])
+        .register(catchers![not_found])
         .launch();
 }
 

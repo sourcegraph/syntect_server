@@ -45,7 +45,7 @@ ENV ROCKET_LIMITS "{json=10485760}"
 
 # syntect_server does not need a secret key since it uses no cookies, but
 # without one set Rocket emits a warning.
-ENV ROCKET_SECRET_KEY "+SecretKeyIsIrrelevantAndUnusedPleaseIgnore="
+ENV ROCKET_SECRET_KEY "SeerutKeyIsI7releuantAndknvsuZPluaseIgnorYA="
 
 # When keep-alive is on, we observe connection resets in our Go clients of
 # syntect_server. It is unclear why this is, especially because our Go clients do
