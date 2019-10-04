@@ -26,7 +26,7 @@ FROM golang:1.13.1-alpine@sha256:2293e952c79b8b3a987e1e09d48b6aa403d703cef9a8fa3
 RUN apk add --no-cache git=2.22.0-r0
 RUN git clone https://github.com/slimsag/http-server-stabilizer /repo
 WORKDIR /repo
-RUN git checkout v1.0.0 && go build -o /http-server-stabilizer .
+RUN git checkout v1.0.1 && go build -o /http-server-stabilizer .
 
 #######################
 # Compile final image #
