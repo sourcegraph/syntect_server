@@ -72,6 +72,11 @@ Run `./publish.sh` after merging your changes.
 
 ## Adding languages:
 
+- With a `.tmLanguage.json`, `.tmLanguage.yaml`, or other, convert to `.tmLanguage` first:
+  - Install [the PackageDev plugin](https://github.com/SublimeText/PackageDev) in Sublime Text 3.
+  - Open the file with Sublime Text 3, press <kbd>Cmd+Shift+P</kbd>.
+  - Search for `PackageDev: Convert (YAML, JSON, PList) to` and select `Convert to: Property List`
+  - Rename the file to just `.tmLanguage` instead of `.tmLanguage.plist` (Sublime will not recognize it as a tmLanguage file otherwise).
 - With a `.tmLanguage` file:
   - example: https://github.com/Microsoft/TypeScript-TmLanguage/blob/master/TypeScript.tmLanguage
   - Ensure it has exact `.tmLanguage` suffix, or else command will not be available.
