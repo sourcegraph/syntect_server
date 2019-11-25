@@ -98,6 +98,7 @@ Run `./publish.sh` after merging your changes.
 - `Solarized (dark)`
 - `Solarized (light)`
 - `Sourcegraph`
+- `Sourcegraph (light)`
 - `TypeScript`
 - `TypeScriptReact`
 - `Visual Studio`
@@ -127,6 +128,8 @@ Run `./publish.sh` after merging your changes.
 - Clojure (`clj`, `cljs`, `cljc`, `cljx`)
 - Crontab (`crontab`)
 - D (`d`, `di`)
+- Dart Doc Comments (``)
+- Dart (`dart`)
 - Diff (`diff`, `patch`)
 - Dockerfile (`Dockerfile`)
 - Erlang (`erl`, `hrl`, `Emakefile`, `emakefile`)
@@ -145,6 +148,7 @@ Run `./publish.sh` after merging your changes.
 - Git Log (`gitlog`)
 - Git Rebase Todo (`git-rebase-todo`)
 - Go (`go`)
+- GraphQL (`graphql`, `gql`)
 - Graphviz (DOT) (`dot`, `DOT`, `gv`)
 - Groovy (`groovy`, `gvy`, `gradle`)
 - HLSL (`fx`, `fxh`, `hlsl`, `hlsli`, `usf`)
@@ -159,6 +163,7 @@ Run `./publish.sh` after merging your changes.
 - JSON (`json`, `sublime-settings`, `sublime-menu`, `sublime-keymap`, `sublime-mousemap`, `sublime-theme`, `sublime-build`, `sublime-project`, `sublime-completions`, `sublime-commands`, `sublime-macro`, `sublime-color-scheme`)
 - JavaScript (Babel) (`js`, `jsx`, `babel`, `es6`)
 - Regular Expressions (Javascript) (``)
+- Kotlin (`kt`, `jetl`, `jet`)
 - LESS (`less`)
 - BibTeX (`bib`)
 - LaTeX Log (``)
@@ -191,6 +196,7 @@ Run `./publish.sh` after merging your changes.
 - Property List (XML) (``)
 - Postscript (`ps`, `eps`)
 - PowerShell (`ps1`, `psm1`, `psd1`)
+- Protocol Buffer (`proto`)
 - Python (`py`, `py3`, `pyw`, `pyi`, `pyx`, `pyx.in`, `pxd`, `pxd.in`, `pxi`, `pxi.in`, `rpy`, `cpy`, `SConstruct`, `Sconstruct`, `sconstruct`, `SConscript`, `gyp`, `gypi`, `Snakefile`, `wscript`)
 - Regular Expressions (Python) (``)
 - R Console (``)
@@ -213,13 +219,16 @@ Run `./publish.sh` after merging your changes.
 - Shell-Unix-Generic (``)
 - commands-builtin-shell-bash (``)
 - Smalltalk (`st`)
+- Starlark (`bzl`)
+- Stylus (`styl`, `stylus`)
 - Swift (`swift`)
 - HTML (Tcl) (`adp`)
 - Tcl (`tcl`)
-- TOML (`toml`, `tml`, `lock`)
+- TOML (`toml`, `tml`, `Cargo.lock`, `Gopkg.lock`)
 - Textile (`textile`)
 - Thrift (`thrift`)
 - TypeScript (`ts`)
 - TypeScriptReact (`tsx`)
+- Vue Component (`vue`)
 - XML (`xml`, `xsd`, `xslt`, `tld`, `dtml`, `rss`, `opml`, `svg`)
 - YAML (`yaml`, `yml`, `sublime-syntax`)
