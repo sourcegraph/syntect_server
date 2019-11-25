@@ -786,7 +786,7 @@ dependencies = [
 [[package]]
 name = "syntect"
 version = "2.1.0"
-source = "git+https://github.com/slimsag/syntect#c9fc53367a900a8e0a32742487a63abe7f65b82c"
+source = "git+https://github.com/slimsag/syntect#deac2dd049c581b1478a87f099d376b5c265c2ec"
 dependencies = [
  "bincode 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
