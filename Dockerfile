@@ -2,7 +2,7 @@
 # Rust nightly + musl in a build stage #
 ########################################
 # Select specific Rust nightly version
-FROM rust:1.43.0-alpine3.11@sha256:5002b2292a8e8fa913288f8791f2c1bc519e229ae65436ac8909c8dec783f533 as our-rust-nightly
+FROM rust:1.43.0@sha256:5002b2292a8e8fa913288f8791f2c1bc519e229ae65436ac8909c8dec783f533 as our-rust-nightly
 RUN rustup default nightly-2020-04-29
 
 # Install musl compiler toolchain
