@@ -6,7 +6,7 @@ FROM rust:1.43.0@sha256:afeb25419be9f7b69481bd5ad37f107a87fca1bb205a5b694a9f0c91
 RUN rustup default nightly-2020-04-29
 
 # Install musl compiler toolchain
-RUN apt-get -y update && apt-get install --no-install-recommends -y musl-tools=1.1.16-3
+RUN apt-get -y update && apt-get install --no-install-recommends -y musl-tools=1.1.21-2 clang=1:7.0-47 llvm=1:7.0-47
 RUN rustup target add x86_64-unknown-linux-musl
 
 ###################################
