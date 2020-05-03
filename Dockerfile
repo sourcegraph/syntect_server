@@ -2,11 +2,11 @@
 # Rust nightly + musl in a build stage #
 ########################################
 # Select specific Rust nightly version
-FROM rust:1.32@sha256:741edb658fac7ac8a978bb30f83fb5d3a7b8e8fc35105a79f424b5671cca724a as our-rust-nightly
-RUN rustup default nightly-2018-11-29
+FROM rust:1.43.0@sha256:afeb25419be9f7b69481bd5ad37f107a87fca1bb205a5b694a9f0c9136b5788f as our-rust-nightly
+RUN rustup default nightly-2020-04-29
 
 # Install musl compiler toolchain
-RUN apt-get -y update && apt-get install --no-install-recommends -y musl-tools=1.1.16-3
+RUN apt-get -y update && apt-get install --no-install-recommends -y musl-tools=1.1.21-2 clang=1:7.0-47 llvm=1:7.0-47
 RUN rustup target add x86_64-unknown-linux-musl
 
 ###################################
@@ -31,7 +31,7 @@ RUN git checkout v1.0.3 && go build -o /http-server-stabilizer .
 #######################
 # Compile final image #
 #######################
-FROM sourcegraph/alpine:3.9@sha256:e9264d4748e16de961a2b973cc12259dee1d33473633beccb1dfb8a0e62c6459
+FROM sourcegraph/alpine:3.10@sha256:4d05cd5669726fc38823e92320659a6d1ef7879e62268adec5df658a0bacf65c
 COPY --from=ss syntect_server /
 COPY --from=hss http-server-stabilizer /
 

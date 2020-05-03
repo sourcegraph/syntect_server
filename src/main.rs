@@ -14,11 +14,7 @@ use std::path::Path;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 use std::panic;
-use std::fmt::Write;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{Color, Theme};
-use syntect::html::{styles_to_coloured_html, IncludeBackground};
-use syntect::parsing::SyntaxDefinition;
+use syntect::html::{highlighted_html_for_string};
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -126,7 +122,7 @@ fn highlight(q: Json<Query>) -> JsonValue {
         // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
 
         json!({
-            "data": highlighted_snippet_for_string_newlines(&q.code, &syntax_def, theme),
+            "data": highlighted_html_for_string(&q.code, &syntax_set, &syntax_def, theme),
             "plaintext": is_plaintext,
         })
     })
@@ -162,30 +158,6 @@ fn list_features() {
     });
 }
 
-/// The same as `syntect::html::highlighted_snippet_for_string` except it is
-/// for syntaxes compiled for the newline character mode (`SyntaxSet::load_defaults_newlines()`).
-pub fn highlighted_snippet_for_string_newlines(
-    s: &str,
-    syntax: &SyntaxDefinition,
-    theme: &Theme,
-) -> String {
-    let mut output = String::new();
-    let mut highlighter = HighlightLines::new(syntax, theme);
-    let c = theme.settings.background.unwrap_or(Color::WHITE);
-    write!(
-        output,
-        "<pre style=\"background-color:#{:02x}{:02x}{:02x};\">\n",
-        c.r, c.g, c.b
-    ).unwrap();
-    for line in LinesWithEndings::from(s) {
-        let regions = highlighter.highlight(&line);
-        let html = styles_to_coloured_html(&regions[..], IncludeBackground::IfDifferent(c));
-        output.push_str(&html);
-    }
-    output.push_str("</pre>");
-    output
-}
-
 fn main() {
     // Only list features if QUIET != "true"
     match env::var("QUIET") {
@@ -199,35 +171,4 @@ fn main() {
         .mount("/", routes![index, health])
         .register(catchers![not_found])
         .launch();
-}
-
-
-/// Iterator yielding every line in a string. The line includes newline character(s).
-/// 
-/// Borrowed from https://stackoverflow.com/a/40457615
-pub struct LinesWithEndings<'a> {
-    input: &'a str,
-}
-
-impl<'a> LinesWithEndings<'a> {
-    pub fn from(input: &'a str) -> LinesWithEndings<'a> {
-        LinesWithEndings {
-            input: input,
-        }
-    }
-}
-
-impl<'a> Iterator for LinesWithEndings<'a> {
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        if self.input.is_empty() {
-            return None;
-        }
-        let split = self.input.find('\n').map(|i| i + 1).unwrap_or(self.input.len());
-        let (line, rest) = self.input.split_at(split);
-        self.input = rest;
-        Some(line)
-    }
 }
