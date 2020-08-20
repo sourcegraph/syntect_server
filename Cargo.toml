@@ -14,4 +14,4 @@ rayon = "1.0"
 lazy_static = "1.0"
 
 [patch.crates-io]
-onig_sys = { git = "https://github.com/rust-onig/rust-onig", branch = "bindgen-take-two" }
+onig_sys = { git = "https://github.com/slimsag/rust-onig", branch = "main" }
