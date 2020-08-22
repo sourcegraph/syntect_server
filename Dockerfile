@@ -31,13 +31,9 @@ RUN git checkout v1.0.4 && go build -o /http-server-stabilizer .
 #######################
 # Compile final image #
 #######################
-FROM sourcegraph/alpine:3.10@sha256:4d05cd5669726fc38823e92320659a6d1ef7879e62268adec5df658a0bacf65c
+FROM sourcegraph/alpine:3.12@sha256:133a0a767b836cf86a011101995641cf1b5cbefb3dd212d78d7be145adde636d
 COPY --from=ss syntect_server /
 COPY --from=hss http-server-stabilizer /
-
-# Use tini (https://github.com/krallin/tini) for proper signal handling.
-RUN apk add --no-cache tini=0.18.0-r0
-ENTRYPOINT ["/sbin/tini", "--"]
 
 EXPOSE 9238
 ENV ROCKET_ENV "production"
