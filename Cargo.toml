@@ -3,6 +3,7 @@ name = "syntect_server"
 version = "1.0.0"
 authors = ["Stephen Gutekanst <stephen.gutekanst@gmail.com>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 syntect = { git = "https://github.com/slimsag/syntect" }
