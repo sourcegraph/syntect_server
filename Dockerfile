@@ -2,8 +2,7 @@
 # Rust nightly + musl in a build stage #
 ########################################
 # Select specific Rust nightly version
-FROM rust:1.43.0@sha256:afeb25419be9f7b69481bd5ad37f107a87fca1bb205a5b694a9f0c9136b5788f as our-rust-nightly
-RUN rustup default nightly-2020-04-29
+FROM rust:1.46.0@sha256:90d7ddc83ab195dbe2d2f56e94c0a3f47952fcc1990d6d9b14d6d4213333a43e as our-rust-builder
 
 # Install musl compiler toolchain
 RUN apt-get -y update && apt-get install --no-install-recommends -y musl-tools=1.1.21-2 clang=1:7.0-47 llvm=1:7.0-47
@@ -12,7 +11,7 @@ RUN rustup target add x86_64-unknown-linux-musl
 ###################################
 # Build syntect_server statically #
 ###################################
-FROM our-rust-nightly as ss
+FROM our-rust-builder as ss
 COPY . /repo
 WORKDIR /repo
 RUN env 'CC_x86_64-unknown-linux-musl=musl-gcc' cargo rustc --release --target x86_64-unknown-linux-musl -- -C 'linker=musl-gcc'

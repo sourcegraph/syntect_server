@@ -1,3 +1,8 @@
+* syntect_server itself is licensed under the MIT license (included below).
+* Dependencies are licensed under OSS commercial-friendly licenses, see LICENSE.dependencies.
+* Included language syntaxes are licensed under OSS(*) commercial-friendly licenses, see LICENSE.syntaxes
+
+---
 MIT License
 
 Copyright (c) 2017 Sourcegraph

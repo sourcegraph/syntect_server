@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
 
 #[macro_use] extern crate lazy_static;
 extern crate rayon;
@@ -158,7 +158,8 @@ fn list_features() {
     });
 }
 
-fn main() {
+#[launch]
+fn rocket() -> rocket::Rocket {
     // Only list features if QUIET != "true"
     match env::var("QUIET") {
         Ok(v) => if v != "true" {
@@ -170,5 +171,4 @@ fn main() {
     rocket::ignite()
         .mount("/", routes![index, health])
         .register(catchers![not_found])
-        .launch();
 }
