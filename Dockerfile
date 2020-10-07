@@ -1,26 +1,18 @@
-########################################
-# Rust nightly + musl in a build stage #
-########################################
-# Select specific Rust nightly version
-FROM rust:1.46.0@sha256:90d7ddc83ab195dbe2d2f56e94c0a3f47952fcc1990d6d9b14d6d4213333a43e as our-rust-builder
-
-# Install musl compiler toolchain
-RUN apt-get -y update && apt-get install --no-install-recommends -y musl-tools=1.1.21-2 clang=1:7.0-47 llvm=1:7.0-47
-RUN rustup target add x86_64-unknown-linux-musl
-
 ###################################
 # Build syntect_server statically #
 ###################################
-FROM our-rust-builder as ss
+FROM rust:1.46.0-alpine3.12@sha256:c9890db1527309a88994b12dfe5e1ed695518037367ffb74df76a66bfc303ef5 as ss
+RUN apk add --no-cache musl-dev
 COPY . /repo
 WORKDIR /repo
-RUN env 'CC_x86_64-unknown-linux-musl=musl-gcc' cargo rustc --release --target x86_64-unknown-linux-musl -- -C 'linker=musl-gcc'
-RUN cp ./target/x86_64-unknown-linux-musl/release/syntect_server /syntect_server
+RUN cargo rustc --release
+RUN ls ./target
+RUN cp ./target/release/syntect_server /syntect_server
 
 ################################
 # Build http-server-stabilizer #
 ################################
-FROM golang:1.15.0-alpine@sha256:73182a0a24a1534e31ad9cc9e3a4bb46bb030a883b26eda0a87060f679b83607 as hss
+FROM golang:1.15.2-alpine@sha256:4d8abd16b03209b30b48f69a2e10347aacf7ce65d8f9f685e8c3e20a512234d9 as hss
 
 RUN apk add --no-cache git=2.26.2-r0
 RUN git clone https://github.com/slimsag/http-server-stabilizer /repo
