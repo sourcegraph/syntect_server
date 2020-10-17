@@ -159,6 +159,7 @@ Run `./publish.sh` after merging your changes.
 - Git Mailmap (`.mailmap`, `mailmap`)
 - Git Rebase Todo (`git-rebase-todo`)
 - Go (`go`)
+- GraphQL (`graphql`, `graphqls`, `gql`, `graphcool`)
 - Graphviz (DOT) (`dot`, `DOT`, `gv`)
 - Groovy (`groovy`, `gvy`, `gradle`, `Jenkinsfile`)
 - HLSL (`fx`, `fxh`, `hlsl`, `hlsli`, `usf`)
