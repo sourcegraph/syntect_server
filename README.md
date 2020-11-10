@@ -236,6 +236,7 @@ Run `./publish.sh` after merging your changes.
 - Swift (`swift`)
 - HTML (Tcl) (`adp`)
 - Tcl (`tcl`)
+- TOML (`toml`)
 - Textile (`textile`)
 - Thrift (`thrift`)
 - TypeScript (`ts`)
@@ -243,3 +244,4 @@ Run `./publish.sh` after merging your changes.
 - Vue Component (`vue`)
 - XML (`xml`, `xsd`, `xslt`, `tld`, `dtml`, `rng`, `rss`, `opml`, `svg`)
 - YAML (`yaml`, `yml`, `sublime-syntax`)
+- Zig (`zig`)
