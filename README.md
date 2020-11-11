@@ -72,24 +72,24 @@ Run `./publish.sh` after merging your changes.
 
 ## Adding languages:
 
-- With a `.tmLanguage.json`, `.tmLanguage.yaml`, or other, convert to `.tmLanguage` first:
-  - Install [the PackageDev plugin](https://github.com/SublimeText/PackageDev) in Sublime Text 3.
-  - Open the file with Sublime Text 3, press <kbd>Cmd+Shift+P</kbd>.
-  - Search for `PackageDev: Convert (YAML, JSON, PList) to` and select `Convert to: Property List`
-  - Rename the file to just `.tmLanguage` instead of `.tmLanguage.plist` (Sublime will not recognize it as a tmLanguage file otherwise).
-- With a `.tmLanguage` file:
-  - example: https://github.com/Microsoft/TypeScript-TmLanguage/blob/master/TypeScript.tmLanguage
-  - Ensure it has exact `.tmLanguage` suffix, or else command will not be available.
-  - Open the file with Sublime Text 3, press <kbd>Cmd+Shift+P</kbd>.
-  - Search for `Plugin Development: Convert Syntax to .sublime-syntax` command.
-  - Continue with steps below.
-- With a `.sublime-syntax` file:
-  - Save the file anywhere under `Packages/MySyntax` [in our fork of sublimehq/Packages](https://github.com/slimsag/Packages).
-  - In our fork of syntect
-    - update the git submodule
-    - run `make assets`
-    - commit those changes and submit a PR to the syntect fork
-  - Build a new binary.
+#### 1) Find an open-source `.tmLanguage` or `.sublime-syntax` file and send a PR to our package registry
+
+https://github.com/slimsag/Packages is the package registry we use which holds all of the syntax definitions we use in syntect_server and Sourcegraph. Send a PR there by following [these steps](https://github.com/slimsag/Packages/blob/master/README.md#adding-a-new-language)
+
+#### 2) Update our temporary fork of `syntect`
+
+We use a temporary fork of `syntect` as a hack to get our `Packages` registry into the binary. Update it by creating a PR with two commits like:
+
+- https://github.com/slimsag/syntect/commit/9976d2095e49fd91607026364466cd7b389b938e
+- https://github.com/slimsag/syntect/commit/1182dd3bd7c82b6655d8466c9896a1e4f458c71e
+
+#### 3) Update syntect_server to use the new version of `syntect`
+
+Send a PR to this repository [with the result of running `cargo update -p syntect`](https://github.com/sourcegraph/syntect_server/commit/1c72addeac3cb54f2c1a7735e8c4ca75eb16d0b3).
+
+#### 4) Publish a new image, use it in Sourcegraph
+
+Run `./publish.sh` to build and release a new image of `syntect_server`, and then send a PR to the main Sourcegraph repository like [this](https://github.com/sourcegraph/sourcegraph/pull/15634/commits/2b8c2a09ab52dbf840495fe0200abd21619b2856). Once merged, it will automatically rollout to Sourcegraph.com and go in the next Sourcegraph release.
 
 ## Embedded themes:
 
