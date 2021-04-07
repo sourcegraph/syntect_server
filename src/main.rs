@@ -11,10 +11,14 @@ extern crate syntect;
 use rocket_contrib::json::{Json, JsonValue};
 use std::env;
 use std::path::Path;
-use syntect::highlighting::ThemeSet;
-use syntect::parsing::SyntaxSet;
 use std::panic;
-use syntect::html::{highlighted_html_for_string};
+use syntect::{
+    highlighting::ThemeSet,
+    parsing::{Scope, ScopeStack, SCOPE_REPO, ScopeStackOp, SyntaxSet, BasicScopeStackOp, SyntaxReference, ParseState},
+    util::LinesWithEndings,
+    html::{highlighted_html_for_string, ClassStyle},
+};
+use std::fmt::Write;
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -23,6 +27,7 @@ thread_local! {
 lazy_static! {
     static ref THEME_SET: ThemeSet = ThemeSet::load_defaults();
 }
+
 
 #[derive(Deserialize)]
 struct Query {
@@ -36,6 +41,7 @@ struct Query {
     filepath: String,
 
     theme: String,
+
     code: String,
 }
 
@@ -98,7 +104,7 @@ fn highlight(q: Json<Query>) -> JsonValue {
             // see https://github.com/trishume/syntect/pull/170
             match syntax_set.find_syntax_by_extension(file_name) {
                 Some(v) => v,
-                None => 
+                None =>
                     // Now try to find the syntax by the actual file extension.
                     match syntax_set.find_syntax_by_extension(extension) {
                         Some(v) => v,
@@ -123,6 +129,88 @@ fn highlight(q: Json<Query>) -> JsonValue {
 
         json!({
             "data": highlighted_html_for_string(&q.code, &syntax_set, &syntax_def, theme),
+            "plaintext": is_plaintext,
+        })
+    })
+}
+
+#[post("/css_table", format = "application/json", data = "<q>")]
+fn css_table_index(q: Json<Query>) -> JsonValue {
+    // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
+    // and instead Syntect would return Result types when failures occur. This
+    // will require some non-trivial work upstream:
+    // https://github.com/trishume/syntect/issues/98
+    let result = panic::catch_unwind(|| {
+        css_table_highlight(q)
+    });
+    match result {
+        Ok(v) => v,
+        Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
+    }
+}
+
+fn css_table_highlight(q: Json<Query>) -> JsonValue {
+    SYNTAX_SET.with(|syntax_set| {
+
+        // Determine syntax definition by extension.
+        let mut is_plaintext = false;
+        let syntax_def = if q.filepath == "" {
+            // Legacy codepath, kept for backwards-compatability with old clients.
+            match syntax_set.find_syntax_by_extension(&q.extension) {
+                Some(v) => v,
+                None =>
+                    // Fall back: Determine syntax definition by first line.
+                    match syntax_set.find_syntax_by_first_line(&q.code) {
+                        Some(v) => v,
+                        None => return json!({"error": "invalid extension"}),
+                },
+            }
+        } else {
+            // Split the input path ("foo/myfile.go") into file name
+            // ("myfile.go") and extension ("go").
+            let path = Path::new(&q.filepath);
+            let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let extension = path.extension().and_then(|x| x.to_str()).unwrap_or("");
+
+            // To determine the syntax definition, we must first check using the
+            // filename as some syntaxes match an "extension" that is actually a
+            // whole file name (e.g. "Dockerfile" or "CMakeLists.txt"); see e.g. https://github.com/trishume/syntect/pull/170
+            //
+            // After that, if we do not find any syntax, we can actually check by
+            // extension and lastly via the first line of the code.
+
+            // First try to find a syntax whose "extension" matches our file
+            // name. This is done due to some syntaxes matching an "extension"
+            // that is actually a whole file name (e.g. "Dockerfile" or "CMakeLists.txt")
+            // see https://github.com/trishume/syntect/pull/170
+            match syntax_set.find_syntax_by_extension(file_name) {
+                Some(v) => v,
+                None =>
+                    // Now try to find the syntax by the actual file extension.
+                    match syntax_set.find_syntax_by_extension(extension) {
+                        Some(v) => v,
+                        None =>
+                            // Fall back: Determine syntax definition by first line.
+                            match syntax_set.find_syntax_by_first_line(&q.code) {
+                                Some(v) => v,
+                                None => {
+                                    is_plaintext = true;
+
+                                    // Render plain text, so the user gets the same HTML
+                                    // output structure.
+                                    syntax_set.find_syntax_plain_text()
+                                }
+                        },
+                    }
+            }
+        };
+
+        let mut html_generator = ClassedHTMLTableGenerator::new_with_class_style(&syntax_def, &syntax_set, ClassStyle::Spaced);
+        html_generator.add_content(&q.code);
+        let output_html = html_generator.finalize();
+
+        json!({
+            "data": output_html,
             "plaintext": is_plaintext,
         })
     })
@@ -170,5 +258,157 @@ fn rocket() -> rocket::Rocket {
 
     rocket::ignite()
         .mount("/", routes![index, health])
+        .mount("/css_table", routes![css_table_index, health])
         .register(catchers![not_found])
+}
+
+pub struct ClassedHTMLTableGenerator<'a> {
+    syntax_set: &'a SyntaxSet,
+    parse_state: ParseState,
+    stack: ScopeStack,
+    html: String,
+    style: ClassStyle,
+}
+
+impl<'a> ClassedHTMLTableGenerator<'a> {
+    pub fn new_with_class_style(syntax_reference: &'a SyntaxReference, syntax_set: &'a SyntaxSet, style: ClassStyle) -> ClassedHTMLTableGenerator<'a> {
+        let parse_state = ParseState::new(syntax_reference);
+        let html = "<table><tbody>".to_string();
+        ClassedHTMLTableGenerator {
+            syntax_set,
+            parse_state,
+            html,
+            style,
+            stack: ScopeStack::new(),
+        }
+    }
+
+    fn add_content(&mut self, code: &str) {
+        self.html.reserve(code.len() * 8);
+        for (i, line) in LinesWithEndings::from(code).enumerate() {
+            write!(self.html,"<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">", i+1).unwrap();
+            self.parse_html_for_line(&line);
+            self.html.push_str("</td></tr>")
+        }
+    }
+
+    /// Parse the line of code and update the internal HTML buffer with tagged HTML
+    ///
+    /// *Note:* This function requires `line` to include a newline at the end and
+    /// also use of the `load_defaults_newlines` version of the syntaxes.
+    pub fn parse_html_for_line(&mut self, line: &str) {
+        for scope in self.stack.as_slice() {
+            self.html.push_str("<span class=\"");
+            scope_to_classes(&mut self.html, *scope, self.style);
+            self.html.push_str("\">");
+        }
+        let parsed_line = self.parse_state.parse_line(line, &self.syntax_set);
+        self.tokens_to_classed_spans(
+            line,
+            parsed_line.as_slice(),
+        );
+        for _ in 0..self.stack.len() {
+            self.html.push_str("</span>")
+        }
+    }
+
+    pub fn tokens_to_classed_spans(&mut self, line: &str, ops: &[(usize, ScopeStackOp)]) {
+        let mut cur_index = 0;
+
+        // check and skip emty inner <span> tags
+        let mut span_empty = false;
+        let mut span_start = 0;
+
+        for &(i, ref op) in ops {
+            if i > cur_index {
+                span_empty = false;
+                write!(self.html, "{}", Escape(&line[cur_index..i])).unwrap();
+                cur_index = i
+            }
+            let mut stack = self.stack.clone();
+            stack.apply_with_hook(op, |basic_op, _| {
+                match basic_op {
+                    BasicScopeStackOp::Push(scope) => {
+                        span_start = self.html.len();
+                        span_empty = true;
+                        self.html.push_str("<span class=\"");
+                        scope_to_classes(&mut self.html, scope, self.style);
+                        self.html.push_str("\">");
+                    }
+                    BasicScopeStackOp::Pop => {
+                        if span_empty {
+                            &self.html.truncate(span_start);
+                        } else {
+                            &self.html.push_str("</span>");
+                        }
+                        span_empty = false;
+                    }
+                }
+            });
+            self.stack = stack;
+        }
+        write!(self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
+    }
+
+    pub fn finalize(mut self) -> String {
+        self.html.push_str("</pre>");
+        self.html
+    }
+}
+
+fn scope_to_classes(s: &mut String, scope: Scope, style: ClassStyle) {
+    let repo = SCOPE_REPO.lock().unwrap();
+    for i in 0..(scope.len()) {
+        let atom = scope.atom_at(i as usize);
+        let atom_s = repo.atom_str(atom);
+        if i != 0 {
+            s.push_str(" ")
+        }
+        match style {
+            ClassStyle::Spaced => {},
+            ClassStyle::SpacedPrefixed{prefix} => s.push_str(&prefix),
+            _ => unreachable!(),
+        }
+        s.push_str(atom_s);
+    }
+}
+
+
+use std::fmt;
+
+/// Wrapper struct which will emit the HTML-escaped version of the contained
+/// string when passed to a format string.
+pub struct Escape<'a>(pub &'a str);
+
+impl<'a> fmt::Display for Escape<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Because the internet is always right, turns out there's not that many
+        // characters to escape: http://stackoverflow.com/questions/7381974
+        let Escape(s) = *self;
+        let pile_o_bits = s;
+        let mut last = 0;
+        for (i, ch) in s.bytes().enumerate() {
+            match ch as char {
+                '<' | '>' | '&' | '\'' | '"' => {
+                    fmt.write_str(&pile_o_bits[last..i])?;
+                    let s = match ch as char {
+                        '>' => "&gt;",
+                        '<' => "&lt;",
+                        '&' => "&amp;",
+                        '\'' => "&#39;",
+                        '"' => "&quot;",
+                        _ => unreachable!(),
+                    };
+                    fmt.write_str(s)?;
+                    last = i + 1;
+                }
+                _ => {}
+            }
+        }
+
+        if last < s.len() {
+            fmt.write_str(&pile_o_bits[last..])?;
+        }
+        Ok(())
+    }
 }
