@@ -147,10 +147,7 @@ fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
     // and instead Syntect would return Result types when failures occur. This
     // will require some non-trivial work upstream:
     // https://github.com/trishume/syntect/issues/98
-    let result = panic::catch_unwind(|| {
-        css_table_highlight(q)
-    });
-    match result {
+    match panic::catch_unwind(|| css_table_highlight(q)) {
         Ok(v) => v,
         Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
     }
@@ -181,7 +178,12 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
             .or_else(|| syntax_set.find_syntax_by_first_line(&q.code))
             .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
 
-        let output = ClassedTableGenerator::new(&syntax_set, &syntax_def, &q.code, q.line_length_limit).generate();
+        let output = ClassedTableGenerator::new(
+            &syntax_set,
+            &syntax_def,
+            &q.code,
+            q.line_length_limit
+        ).generate();
 
         json!({
             "data": output,
