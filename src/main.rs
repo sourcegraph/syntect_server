@@ -18,7 +18,7 @@ use syntect::{
     util::LinesWithEndings,
     html::{highlighted_html_for_string, ClassStyle},
 };
-use std::fmt::Write;
+use std::fmt::{self, Write};
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -205,12 +205,10 @@ fn css_table_highlight(q: Json<Query>) -> JsonValue {
             }
         };
 
-        let mut html_generator = ClassedHTMLTableGenerator::new_with_class_style(&syntax_def, &syntax_set, ClassStyle::Spaced);
-        html_generator.add_content(&q.code);
-        let output_html = html_generator.finalize();
+        let output = ClassedTableGenerator::new(&syntax_set, &syntax_def, &q.code).generate();
 
         json!({
-            "data": output_html,
+            "data": output,
             "plaintext": is_plaintext,
         })
     })
@@ -262,67 +260,99 @@ fn rocket() -> rocket::Rocket {
         .register(catchers![not_found])
 }
 
-pub struct ClassedHTMLTableGenerator<'a> {
+pub struct ClassedTableGenerator<'a> {
     syntax_set: &'a SyntaxSet,
     parse_state: ParseState,
     stack: ScopeStack,
     html: String,
     style: ClassStyle,
+    code: &'a str,
 }
 
-impl<'a> ClassedHTMLTableGenerator<'a> {
-    pub fn new_with_class_style(syntax_reference: &'a SyntaxReference, syntax_set: &'a SyntaxSet, style: ClassStyle) -> ClassedHTMLTableGenerator<'a> {
-        let parse_state = ParseState::new(syntax_reference);
-        let html = "<table><tbody>".to_string();
-        ClassedHTMLTableGenerator {
-            syntax_set,
-            parse_state,
-            html,
-            style,
+
+impl<'a> ClassedTableGenerator<'a> {
+    fn new(ss: &'a SyntaxSet, sr: &SyntaxReference, code: &'a str) -> Self {
+        ClassedTableGenerator{
+            code,
+            syntax_set: ss,
+            parse_state: ParseState::new(sr),
             stack: ScopeStack::new(),
+            html: String::with_capacity(code.len() * 8),
+            style: ClassStyle::Spaced,
         }
     }
 
-    fn add_content(&mut self, code: &str) {
-        self.html.reserve(code.len() * 8);
-        for (i, line) in LinesWithEndings::from(code).enumerate() {
-            write!(self.html,"<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">", i+1).unwrap();
-            self.parse_html_for_line(&line);
-            self.html.push_str("</td></tr>")
+    // generate takes ownership of self so that it can't be re-used
+    fn generate(mut self) -> String {
+        self.open_table();
+
+        for (i, line) in LinesWithEndings::from(self.code).enumerate() {
+            self.open_row(i);
+            self.write_spans_for_line(&line);
+            self.close_row();
+        }
+
+        self.close_table();
+        self.html
+    }
+
+    fn open_table(&mut self) {
+        self.html.push_str("<table><tbody>");
+    }
+
+    fn close_table(&mut self) {
+        self.html.push_str("</tbody></table>");
+    }
+
+    fn open_row(&mut self, i: usize) {
+        write!(&mut self.html, "<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">", i+1).unwrap();
+    }
+
+    fn close_row(&mut self) {
+        self.html.push_str("</td></tr>");
+    }
+
+    fn open_current_scopes(&mut self) {
+        for scope in self.stack.clone().as_slice() {
+            self.open_scope(scope)
         }
     }
 
-    /// Parse the line of code and update the internal HTML buffer with tagged HTML
-    ///
-    /// *Note:* This function requires `line` to include a newline at the end and
-    /// also use of the `load_defaults_newlines` version of the syntaxes.
-    pub fn parse_html_for_line(&mut self, line: &str) {
-        for scope in self.stack.as_slice() {
-            self.html.push_str("<span class=\"");
-            scope_to_classes(&mut self.html, *scope, self.style);
-            self.html.push_str("\">");
-        }
-        let parsed_line = self.parse_state.parse_line(line, &self.syntax_set);
-        self.tokens_to_classed_spans(
-            line,
-            parsed_line.as_slice(),
-        );
+    fn close_current_scopes(&mut self) {
         for _ in 0..self.stack.len() {
             self.html.push_str("</span>")
         }
     }
 
-    pub fn tokens_to_classed_spans(&mut self, line: &str, ops: &[(usize, ScopeStackOp)]) {
+    fn open_scope(&mut self, scope: &Scope) {
+        self.html.push_str("<span class=\"");
+        ClassedTableGenerator::scope_to_classes(&mut self.html, *scope, self.style);
+        self.html.push_str("\">");
+    }
+
+    fn close_scope(&mut self) {
+        self.html.push_str("</span>");
+    }
+
+
+    fn write_spans_for_line(&mut self, line: &str) {
+        self.open_current_scopes();
+        let parsed_line = self.parse_state.parse_line(line, self.syntax_set);
+        self.tokens_to_classed_spans(line, parsed_line.as_slice());
+        self.close_current_scopes();
+    }
+
+    fn tokens_to_classed_spans(&mut self, line: &str, ops: &[(usize, ScopeStackOp)]) {
         let mut cur_index = 0;
 
-        // check and skip emty inner <span> tags
+        // check and skip empty inner <span> tags
         let mut span_empty = false;
         let mut span_start = 0;
 
         for &(i, ref op) in ops {
             if i > cur_index {
                 span_empty = false;
-                write!(self.html, "{}", Escape(&line[cur_index..i])).unwrap();
+                write!(&mut self.html, "{}", Escape(&line[cur_index..i])).unwrap();
                 cur_index = i
             }
             let mut stack = self.stack.clone();
@@ -331,15 +361,13 @@ impl<'a> ClassedHTMLTableGenerator<'a> {
                     BasicScopeStackOp::Push(scope) => {
                         span_start = self.html.len();
                         span_empty = true;
-                        self.html.push_str("<span class=\"");
-                        scope_to_classes(&mut self.html, scope, self.style);
-                        self.html.push_str("\">");
+                        self.open_scope(&scope);
                     }
                     BasicScopeStackOp::Pop => {
                         if span_empty {
-                            &self.html.truncate(span_start);
+                            self.html.truncate(span_start);
                         } else {
-                            &self.html.push_str("</span>");
+                            self.close_scope();
                         }
                         span_empty = false;
                     }
@@ -347,34 +375,29 @@ impl<'a> ClassedHTMLTableGenerator<'a> {
             });
             self.stack = stack;
         }
-        write!(self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
+        write!(&mut self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
     }
 
-    pub fn finalize(mut self) -> String {
-        self.html.push_str("</pre>");
-        self.html
-    }
-}
-
-fn scope_to_classes(s: &mut String, scope: Scope, style: ClassStyle) {
-    let repo = SCOPE_REPO.lock().unwrap();
-    for i in 0..(scope.len()) {
-        let atom = scope.atom_at(i as usize);
-        let atom_s = repo.atom_str(atom);
-        if i != 0 {
-            s.push_str(" ")
+    fn scope_to_classes(s: &mut String, scope: Scope, style: ClassStyle) {
+        let repo = SCOPE_REPO.lock().unwrap();
+        for i in 0..(scope.len()) {
+            let atom = scope.atom_at(i as usize);
+            let atom_s = repo.atom_str(atom);
+            if i != 0 {
+                s.push_str(" ")
+            }
+            match style {
+                ClassStyle::Spaced => {},
+                ClassStyle::SpacedPrefixed{prefix} => s.push_str(&prefix),
+                _ => unreachable!(),
+            }
+            s.push_str(atom_s);
         }
-        match style {
-            ClassStyle::Spaced => {},
-            ClassStyle::SpacedPrefixed{prefix} => s.push_str(&prefix),
-            _ => unreachable!(),
-        }
-        s.push_str(atom_s);
     }
 }
 
 
-use std::fmt;
+
 
 /// Wrapper struct which will emit the HTML-escaped version of the contained
 /// string when passed to a format string.
