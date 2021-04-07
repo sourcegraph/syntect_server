@@ -45,6 +45,13 @@ struct Query {
     code: String,
 }
 
+#[derive(Deserialize)]
+struct CSSTableQuery {
+    filepath: String,
+    code: String,
+    line_length_limit: Option<usize>,
+}
+
 #[post("/", format = "application/json", data = "<q>")]
 fn index(q: Json<Query>) -> JsonValue {
     // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
@@ -135,7 +142,7 @@ fn highlight(q: Json<Query>) -> JsonValue {
 }
 
 #[post("/css_table", format = "application/json", data = "<q>")]
-fn css_table_index(q: Json<Query>) -> JsonValue {
+fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
     // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
     // and instead Syntect would return Result types when failures occur. This
     // will require some non-trivial work upstream:
@@ -149,23 +156,12 @@ fn css_table_index(q: Json<Query>) -> JsonValue {
     }
 }
 
-fn css_table_highlight(q: Json<Query>) -> JsonValue {
+fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
     SYNTAX_SET.with(|syntax_set| {
 
         // Determine syntax definition by extension.
         let mut is_plaintext = false;
-        let syntax_def = if q.filepath == "" {
-            // Legacy codepath, kept for backwards-compatability with old clients.
-            match syntax_set.find_syntax_by_extension(&q.extension) {
-                Some(v) => v,
-                None =>
-                    // Fall back: Determine syntax definition by first line.
-                    match syntax_set.find_syntax_by_first_line(&q.code) {
-                        Some(v) => v,
-                        None => return json!({"error": "invalid extension"}),
-                },
-            }
-        } else {
+        let syntax_def =  {
             // Split the input path ("foo/myfile.go") into file name
             // ("myfile.go") and extension ("go").
             let path = Path::new(&q.filepath);
@@ -205,7 +201,7 @@ fn css_table_highlight(q: Json<Query>) -> JsonValue {
             }
         };
 
-        let output = ClassedTableGenerator::new(&syntax_set, &syntax_def, &q.code).generate();
+        let output = ClassedTableGenerator::new(&syntax_set, &syntax_def, &q.code, q.line_length_limit).generate();
 
         json!({
             "data": output,
@@ -267,11 +263,12 @@ pub struct ClassedTableGenerator<'a> {
     html: String,
     style: ClassStyle,
     code: &'a str,
+    max_line_len: Option<usize>,
 }
 
 
 impl<'a> ClassedTableGenerator<'a> {
-    fn new(ss: &'a SyntaxSet, sr: &SyntaxReference, code: &'a str) -> Self {
+    fn new(ss: &'a SyntaxSet, sr: &SyntaxReference, code: &'a str, max_line_len: Option<usize>) -> Self {
         ClassedTableGenerator{
             code,
             syntax_set: ss,
@@ -279,6 +276,7 @@ impl<'a> ClassedTableGenerator<'a> {
             stack: ScopeStack::new(),
             html: String::with_capacity(code.len() * 8),
             style: ClassStyle::Spaced,
+            max_line_len,
         }
     }
 
@@ -288,7 +286,11 @@ impl<'a> ClassedTableGenerator<'a> {
 
         for (i, line) in LinesWithEndings::from(self.code).enumerate() {
             self.open_row(i);
-            self.write_spans_for_line(&line);
+            if self.max_line_len.map_or(false, |n| line.len() > n) {
+                self.html.push_str(line.strip_suffix("\n").unwrap_or(line));
+            } else {
+                self.write_spans_for_line(&line);
+            }
             self.close_row();
         }
 
