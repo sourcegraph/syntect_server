@@ -160,7 +160,6 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
     SYNTAX_SET.with(|syntax_set| {
 
         // Determine syntax definition by extension.
-        let mut is_plaintext = false;
         let syntax_def =  {
             // Split the input path ("foo/myfile.go") into file name
             // ("myfile.go") and extension ("go").
@@ -190,7 +189,6 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
                             match syntax_set.find_syntax_by_first_line(&q.code) {
                                 Some(v) => v,
                                 None => {
-                                    is_plaintext = true;
 
                                     // Render plain text, so the user gets the same HTML
                                     // output structure.
@@ -205,7 +203,6 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
 
         json!({
             "data": output,
-            "plaintext": is_plaintext,
         })
     })
 }
