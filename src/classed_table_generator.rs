@@ -104,7 +104,7 @@ impl<'a> ClassedTableGenerator<'a> {
 
     fn close_current_scopes(&mut self) {
         for _ in 0..self.stack.len() {
-            self.html.push_str("</span>")
+            self.close_scope()
         }
     }
 
