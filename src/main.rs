@@ -1,25 +1,29 @@
 #![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
 
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 extern crate rayon;
-#[macro_use] extern crate rocket;
-#[macro_use] extern crate rocket_contrib;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate rocket;
+#[macro_use]
+extern crate rocket_contrib;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 extern crate syntect;
 
 use rocket_contrib::json::{Json, JsonValue};
 use std::env;
-use std::path::Path;
 use std::panic;
+use std::path::Path;
 use syntect::{
-    escape::Escape,
     highlighting::ThemeSet,
-    parsing::{Scope, ScopeStack, SCOPE_REPO, ScopeStackOp, SyntaxSet, BasicScopeStackOp, SyntaxReference, ParseState},
-    util::LinesWithEndings,
     html::{highlighted_html_for_string, ClassStyle},
+    parsing::SyntaxSet,
 };
-use std::fmt::Write;
+
+mod classed_table_generator;
+use classed_table_generator::ClassedTableGenerator;
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -28,7 +32,6 @@ thread_local! {
 lazy_static! {
     static ref THEME_SET: ThemeSet = ThemeSet::load_defaults();
 }
-
 
 #[derive(Deserialize)]
 struct Query {
@@ -50,6 +53,9 @@ struct Query {
 struct CSSTableQuery {
     filepath: String,
     code: String,
+
+    // If set, lines with size greater than line_length_limit will
+    // not be highlighted
     line_length_limit: Option<usize>,
 }
 
@@ -59,9 +65,7 @@ fn index(q: Json<Query>) -> JsonValue {
     // and instead Syntect would return Result types when failures occur. This
     // will require some non-trivial work upstream:
     // https://github.com/trishume/syntect/issues/98
-    let result = panic::catch_unwind(|| {
-        highlight(q)
-    });
+    let result = panic::catch_unwind(|| highlight(q));
     match result {
         Ok(v) => v,
         Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
@@ -86,11 +90,13 @@ fn highlight(q: Json<Query>) -> JsonValue {
             match syntax_set.find_syntax_by_extension(&q.extension) {
                 Some(v) => v,
                 None =>
-                    // Fall back: Determine syntax definition by first line.
+                // Fall back: Determine syntax definition by first line.
+                {
                     match syntax_set.find_syntax_by_first_line(&q.code) {
                         Some(v) => v,
                         None => return json!({"error": "invalid extension"}),
-                },
+                    }
+                }
             }
         } else {
             // Split the input path ("foo/myfile.go") into file name
@@ -113,11 +119,13 @@ fn highlight(q: Json<Query>) -> JsonValue {
             match syntax_set.find_syntax_by_extension(file_name) {
                 Some(v) => v,
                 None =>
-                    // Now try to find the syntax by the actual file extension.
+                // Now try to find the syntax by the actual file extension.
+                {
                     match syntax_set.find_syntax_by_extension(extension) {
                         Some(v) => v,
                         None =>
-                            // Fall back: Determine syntax definition by first line.
+                        // Fall back: Determine syntax definition by first line.
+                        {
                             match syntax_set.find_syntax_by_first_line(&q.code) {
                                 Some(v) => v,
                                 None => {
@@ -127,8 +135,10 @@ fn highlight(q: Json<Query>) -> JsonValue {
                                     // output structure.
                                     syntax_set.find_syntax_plain_text()
                                 }
-                        },
+                            }
+                        }
                     }
+                }
             }
         };
 
@@ -156,7 +166,6 @@ fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
 
 fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
     SYNTAX_SET.with(|syntax_set| {
-
         // Split the input path ("foo/myfile.go") into file name
         // ("myfile.go") and extension ("go").
         let path = Path::new(&q.filepath);
@@ -174,7 +183,8 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
         // name. This is done due to some syntaxes matching an "extension"
         // that is actually a whole file name (e.g. "Dockerfile" or "CMakeLists.txt")
         // see https://github.com/trishume/syntect/pull/170
-        let syntax_def = syntax_set.find_syntax_by_extension(file_name)
+        let syntax_def = syntax_set
+            .find_syntax_by_extension(file_name)
             .or_else(|| syntax_set.find_syntax_by_extension(extension))
             .or_else(|| syntax_set.find_syntax_by_first_line(&q.code))
             .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
@@ -183,8 +193,10 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
             &syntax_set,
             &syntax_def,
             &q.code,
-            q.line_length_limit
-        ).generate();
+            q.line_length_limit,
+            ClassStyle::SpacedPrefixed { prefix: "hl-" },
+        )
+        .generate();
 
         json!({
             "data": output,
@@ -226,169 +238,15 @@ fn list_features() {
 fn rocket() -> rocket::Rocket {
     // Only list features if QUIET != "true"
     match env::var("QUIET") {
-        Ok(v) => if v != "true" {
-            list_features()
-        },
+        Ok(v) => {
+            if v != "true" {
+                list_features()
+            }
+        }
         Err(_) => list_features(),
     };
 
     rocket::ignite()
-        .mount("/", routes![css_table_index, index, health])
+        .mount("/", routes![index, css_table_index, health])
         .register(catchers![not_found])
-}
-
-/// The ClassedTableGenerator generates HTML tables of the following form:
-/// <table>
-///   <tbody>
-///     <tr>
-///       <td class="line" data-line="1">
-///       <td class="code">
-///         <span class="hl-source hl-go">
-///           <span class="hl-keyword hl-control hl-go">package</span>
-///           main
-///         </span>
-///       </td>
-///     </tr>
-///   </tbody>
-/// </table
-pub struct ClassedTableGenerator<'a> {
-    syntax_set: &'a SyntaxSet,
-    parse_state: ParseState,
-    stack: ScopeStack,
-    html: String,
-    style: ClassStyle,
-    code: &'a str,
-    max_line_len: Option<usize>,
-}
-
-
-impl<'a> ClassedTableGenerator<'a> {
-    fn new(ss: &'a SyntaxSet, sr: &SyntaxReference, code: &'a str, max_line_len: Option<usize>) -> Self {
-        ClassedTableGenerator{
-            code,
-            syntax_set: ss,
-            parse_state: ParseState::new(sr),
-            stack: ScopeStack::new(),
-            html: String::with_capacity(code.len() * 8),
-            style: ClassStyle::SpacedPrefixed{prefix: "hl-"},
-            max_line_len,
-        }
-    }
-
-    // generate takes ownership of self so that it can't be re-used
-    fn generate(mut self) -> String {
-        self.open_table();
-
-        for (i, line) in LinesWithEndings::from(self.code).enumerate() {
-            self.open_row(i);
-            if self.max_line_len.map_or(false, |n| line.len() > n) {
-                self.html.push_str(line.strip_suffix("\n").unwrap_or(line));
-            } else {
-                self.write_spans_for_line(&line);
-            }
-            self.close_row();
-        }
-
-        self.close_table();
-        self.html
-    }
-
-    fn open_table(&mut self) {
-        self.html.push_str("<table><tbody>");
-    }
-
-    fn close_table(&mut self) {
-        self.html.push_str("</tbody></table>");
-    }
-
-    fn open_row(&mut self, i: usize) {
-        write!(&mut self.html, "<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">", i+1).unwrap();
-    }
-
-    fn close_row(&mut self) {
-        self.html.push_str("</td></tr>");
-    }
-
-    fn open_current_scopes(&mut self) {
-        for scope in self.stack.clone().as_slice() {
-            self.open_scope(scope)
-        }
-    }
-
-    fn close_current_scopes(&mut self) {
-        for _ in 0..self.stack.len() {
-            self.html.push_str("</span>")
-        }
-    }
-
-    fn open_scope(&mut self, scope: &Scope) {
-        self.html.push_str("<span class=\"");
-        self.write_classes_for_scope(scope);
-        self.html.push_str("\">");
-    }
-
-    fn close_scope(&mut self) {
-        self.html.push_str("</span>");
-    }
-
-
-    fn write_spans_for_line(&mut self, line: &str) {
-        self.open_current_scopes();
-        let parsed_line = self.parse_state.parse_line(line, self.syntax_set);
-        self.write_spans_for_tokens(line, parsed_line.as_slice());
-        self.close_current_scopes();
-    }
-
-    fn write_spans_for_tokens(&mut self, line: &str, ops: &[(usize, ScopeStackOp)]) {
-        let mut cur_index = 0;
-
-        // check and skip empty inner <span> tags
-        let mut span_empty = false;
-        let mut span_start = 0;
-
-        for &(i, ref op) in ops {
-            if i > cur_index {
-                span_empty = false;
-                write!(&mut self.html, "{}", Escape(&line[cur_index..i])).unwrap();
-                cur_index = i
-            }
-            let mut stack = self.stack.clone();
-            stack.apply_with_hook(op, |basic_op, _| {
-                match basic_op {
-                    BasicScopeStackOp::Push(scope) => {
-                        span_start = self.html.len();
-                        span_empty = true;
-                        self.open_scope(&scope);
-                    }
-                    BasicScopeStackOp::Pop => {
-                        if span_empty {
-                            self.html.truncate(span_start);
-                        } else {
-                            self.close_scope();
-                        }
-                        span_empty = false;
-                    }
-                }
-            });
-            self.stack = stack;
-        }
-        write!(&mut self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
-    }
-
-    fn write_classes_for_scope(&mut self, scope: &Scope) {
-        let repo = SCOPE_REPO.lock().unwrap();
-        for i in 0..(scope.len()) {
-            let atom = scope.atom_at(i as usize);
-            let atom_s = repo.atom_str(atom);
-            if i != 0 {
-                self.html.push_str(" ")
-            }
-            match self.style {
-                ClassStyle::Spaced => {},
-                ClassStyle::SpacedPrefixed{prefix} => self.html.push_str(&prefix),
-                _ => unreachable!(),
-            }
-            self.html.push_str(atom_s);
-        }
-    }
 }
