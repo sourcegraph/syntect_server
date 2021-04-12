@@ -13,12 +13,13 @@ use std::env;
 use std::path::Path;
 use std::panic;
 use syntect::{
+    escape::Escape,
     highlighting::ThemeSet,
     parsing::{Scope, ScopeStack, SCOPE_REPO, ScopeStackOp, SyntaxSet, BasicScopeStackOp, SyntaxReference, ParseState},
     util::LinesWithEndings,
     html::{highlighted_html_for_string, ClassStyle},
 };
-use std::fmt::{self, Write};
+use std::fmt::Write;
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -232,11 +233,24 @@ fn rocket() -> rocket::Rocket {
     };
 
     rocket::ignite()
-        .mount("/", routes![index, health])
-        .mount("/css_table", routes![css_table_index, health])
+        .mount("/", routes![css_table_index, index, health])
         .register(catchers![not_found])
 }
 
+/// The ClassedTableGenerator generates HTML tables of the following form:
+/// <table>
+///   <tbody>
+///     <tr>
+///       <td class="line" data-line="1">
+///       <td class="code">
+///         <span class="hl-source hl-go">
+///           <span class="hl-keyword hl-control hl-go">package</span>
+///           main
+///         </span>
+///       </td>
+///     </tr>
+///   </tbody>
+/// </table
 pub struct ClassedTableGenerator<'a> {
     syntax_set: &'a SyntaxSet,
     parse_state: ParseState,
@@ -256,7 +270,7 @@ impl<'a> ClassedTableGenerator<'a> {
             parse_state: ParseState::new(sr),
             stack: ScopeStack::new(),
             html: String::with_capacity(code.len() * 8),
-            style: ClassStyle::Spaced,
+            style: ClassStyle::SpacedPrefixed{prefix: "hl-"},
             max_line_len,
         }
     }
@@ -309,7 +323,7 @@ impl<'a> ClassedTableGenerator<'a> {
 
     fn open_scope(&mut self, scope: &Scope) {
         self.html.push_str("<span class=\"");
-        ClassedTableGenerator::scope_to_classes(&mut self.html, *scope, self.style);
+        self.write_classes_for_scope(scope);
         self.html.push_str("\">");
     }
 
@@ -321,11 +335,11 @@ impl<'a> ClassedTableGenerator<'a> {
     fn write_spans_for_line(&mut self, line: &str) {
         self.open_current_scopes();
         let parsed_line = self.parse_state.parse_line(line, self.syntax_set);
-        self.tokens_to_classed_spans(line, parsed_line.as_slice());
+        self.write_spans_for_tokens(line, parsed_line.as_slice());
         self.close_current_scopes();
     }
 
-    fn tokens_to_classed_spans(&mut self, line: &str, ops: &[(usize, ScopeStackOp)]) {
+    fn write_spans_for_tokens(&mut self, line: &str, ops: &[(usize, ScopeStackOp)]) {
         let mut cur_index = 0;
 
         // check and skip empty inner <span> tags
@@ -361,60 +375,20 @@ impl<'a> ClassedTableGenerator<'a> {
         write!(&mut self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
     }
 
-    fn scope_to_classes(s: &mut String, scope: Scope, style: ClassStyle) {
+    fn write_classes_for_scope(&mut self, scope: &Scope) {
         let repo = SCOPE_REPO.lock().unwrap();
         for i in 0..(scope.len()) {
             let atom = scope.atom_at(i as usize);
             let atom_s = repo.atom_str(atom);
             if i != 0 {
-                s.push_str(" ")
+                self.html.push_str(" ")
             }
-            match style {
+            match self.style {
                 ClassStyle::Spaced => {},
-                ClassStyle::SpacedPrefixed{prefix} => s.push_str(&prefix),
+                ClassStyle::SpacedPrefixed{prefix} => self.html.push_str(&prefix),
                 _ => unreachable!(),
             }
-            s.push_str(atom_s);
+            self.html.push_str(atom_s);
         }
-    }
-}
-
-
-
-
-/// Wrapper struct which will emit the HTML-escaped version of the contained
-/// string when passed to a format string.
-pub struct Escape<'a>(pub &'a str);
-
-impl<'a> fmt::Display for Escape<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Because the internet is always right, turns out there's not that many
-        // characters to escape: http://stackoverflow.com/questions/7381974
-        let Escape(s) = *self;
-        let pile_o_bits = s;
-        let mut last = 0;
-        for (i, ch) in s.bytes().enumerate() {
-            match ch as char {
-                '<' | '>' | '&' | '\'' | '"' => {
-                    fmt.write_str(&pile_o_bits[last..i])?;
-                    let s = match ch as char {
-                        '>' => "&gt;",
-                        '<' => "&lt;",
-                        '&' => "&amp;",
-                        '\'' => "&#39;",
-                        '"' => "&quot;",
-                        _ => unreachable!(),
-                    };
-                    fmt.write_str(s)?;
-                    last = i + 1;
-                }
-                _ => {}
-            }
-        }
-
-        if last < s.len() {
-            fmt.write_str(&pile_o_bits[last..])?;
-        }
-        Ok(())
     }
 }
