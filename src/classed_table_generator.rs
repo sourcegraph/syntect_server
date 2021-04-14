@@ -62,7 +62,7 @@ impl<'a> ClassedTableGenerator<'a> {
         for (i, line) in LinesWithEndings::from(self.code).enumerate() {
             open_row(&mut self.html, i);
             if self.max_line_len.map_or(false, |n| line.len() > n) {
-                self.html.push_str(line.strip_suffix("\n").unwrap_or(line));
+                self.html.push_str(line);
             } else {
                 self.write_spans_for_line(&line);
             }
@@ -187,4 +187,3 @@ fn open_row(s: &mut String, i: usize) {
 fn close_row(s: &mut String) {
     s.push_str("</td></tr>");
 }
-

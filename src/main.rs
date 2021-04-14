@@ -150,13 +150,13 @@ fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
     // and instead Syntect would return Result types when failures occur. This
     // will require some non-trivial work upstream:
     // https://github.com/trishume/syntect/issues/98
-    match panic::catch_unwind(|| css_table_highlight(q)) {
-        Ok(v) => v,
+    match panic::catch_unwind(|| css_table_highlight(q.into_inner())) {
+        Ok(v) => json!({"data": v}) ,
         Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
     }
 }
 
-fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
+fn css_table_highlight(q: CSSTableQuery) -> String {
     SYNTAX_SET.with(|syntax_set| {
         // Split the input path ("foo/myfile.go") into file name
         // ("myfile.go") and extension ("go").
@@ -181,18 +181,14 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
             .or_else(|| syntax_set.find_syntax_by_first_line(&q.code))
             .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
 
-        let output = ClassedTableGenerator::new(
+        ClassedTableGenerator::new(
             &syntax_set,
             &syntax_def,
             &q.code,
             q.line_length_limit,
             ClassStyle::SpacedPrefixed{prefix: "hl-"},
         )
-        .generate();
-
-        json!({
-            "data": output,
-        })
+        .generate()
     })
 }
 
@@ -239,4 +235,121 @@ fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/", routes![index, css_table_index, health])
         .register(catchers![not_found])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{css_table_highlight, CSSTableQuery};
+
+    fn test_css_table_highlight(query: CSSTableQuery, expected: &str) {
+        let output = css_table_highlight(query);
+        assert_eq!(expected, output.as_str());
+    }
+
+    #[test]
+    fn simple_css() {
+        let query = CSSTableQuery{
+            filepath: "test.go".to_string(),
+            code: "package main\n".to_string(),
+            line_length_limit: None,
+        };
+        let expected = "<table>\
+                            <tbody>\
+                                <tr>\
+                                    <td class=\"line\" data-line=\"1\"/>\
+                                    <td class=\"code\">\
+                                        <span class=\"hl-source hl-go\">\
+                                            <span class=\"hl-keyword hl-other hl-package hl-go\">package</span> \
+                                            <span class=\"hl-variable hl-other hl-go\">main</span>\n\
+                                        </span>\
+                                    </td>\
+                                </tr>\
+                            </tbody>\
+                        </table>";
+        test_css_table_highlight(query, expected)
+    }
+
+    #[test]
+    fn no_highlight_long_line() {
+        let query = CSSTableQuery{
+            filepath: "test.go".to_string(),
+            code: "package main\n".to_string(),
+            line_length_limit: Some(5),
+        };
+        let expected = "<table>\
+                            <tbody>\
+                                <tr>\
+                                    <td class=\"line\" data-line=\"1\"/>\
+                                    <td class=\"code\">package main\n</td>\
+                                </tr>\
+                            </tbody>\
+                        </table>";
+        test_css_table_highlight(query, expected)
+    }
+
+    #[test]
+    fn multi_line_java() {
+        let query = CSSTableQuery{
+            filepath: "test.java".to_string(),
+            code: "package com.lwl.boot.model;\n\npublic class Item implements Serializable {}".to_string(),
+            line_length_limit: None,
+        };
+        let expected = "<table>\
+                            <tbody>\
+                                <tr>\
+                                    <td class=\"line\" data-line=\"1\"/>\
+                                    <td class=\"code\">\
+                                        <span class=\"hl-source hl-java\">\
+                                            <span class=\"hl-meta hl-package-declaration hl-java\">\
+                                                <span class=\"hl-keyword hl-other hl-package hl-java\">package</span> \
+                                                <span class=\"hl-meta hl-path hl-java\">\
+                                                    <span class=\"hl-entity hl-name hl-namespace hl-java\">\
+                                                        com\
+                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
+                                                        lwl\
+                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
+                                                        boot\
+                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
+                                                        model\
+                                                    </span>\
+                                                </span>\
+                                            </span>\
+                                            <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\n\
+                                        </span>\
+                                    </td>\
+                                </tr>\
+                                <tr>\
+                                    <td class=\"line\" data-line=\"2\"/>\
+                                    <td class=\"code\">\
+                                        <span class=\"hl-source hl-java\">\n</span>\
+                                    </td>\
+                                </tr>\
+                                <tr>\
+                                    <td class=\"line\" data-line=\"3\"/>\
+                                    <td class=\"code\">\
+                                    <span class=\"hl-source hl-java\">\
+                                        <span class=\"hl-meta hl-class hl-java\">\
+                                            <span class=\"hl-storage hl-modifier hl-java\">public</span> \
+                                            <span class=\"hl-meta hl-class hl-identifier hl-java\">\
+                                                <span class=\"hl-storage hl-type hl-java\">class</span> \
+                                                <span class=\"hl-entity hl-name hl-class hl-java\">Item</span>\
+                                            </span> \
+                                            <span class=\"hl-meta hl-class hl-implements hl-java\">\
+                                                <span class=\"hl-keyword hl-declaration hl-implements hl-java\">implements</span> \
+                                                <span class=\"hl-entity hl-other hl-inherited-class hl-java\">Serializable</span> \
+                                            </span>\
+                                            <span class=\"hl-meta hl-class hl-body hl-java\">\
+                                                <span class=\"hl-meta hl-block hl-java\">\
+                                                    <span class=\"hl-punctuation hl-section hl-block hl-begin hl-java\">{</span>\
+                                                    <span class=\"hl-punctuation hl-section hl-block hl-end hl-java\">}</span>\
+                                                </span>\
+                                            </span>\
+                                        </span>\
+                                    </span>\
+                                </td>\
+                            </tr>\
+                        </tbody>\
+                    </table>";
+        test_css_table_highlight(query, expected)
+    }
 }
