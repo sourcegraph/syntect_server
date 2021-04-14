@@ -57,41 +57,20 @@ impl<'a> ClassedTableGenerator<'a> {
 
     // generate takes ownership of self so that it can't be re-used
     pub fn generate(mut self) -> String {
-        self.open_table();
+        open_table(&mut self.html);
 
         for (i, line) in LinesWithEndings::from(self.code).enumerate() {
-            self.open_row(i);
+            open_row(&mut self.html, i);
             if self.max_line_len.map_or(false, |n| line.len() > n) {
                 self.html.push_str(line.strip_suffix("\n").unwrap_or(line));
             } else {
                 self.write_spans_for_line(&line);
             }
-            self.close_row();
+            close_row(&mut self.html);
         }
 
-        self.close_table();
+        close_table(&mut self.html);
         self.html
-    }
-
-    fn open_table(&mut self) {
-        self.html.push_str("<table><tbody>");
-    }
-
-    fn close_table(&mut self) {
-        self.html.push_str("</tbody></table>");
-    }
-
-    fn open_row(&mut self, i: usize) {
-        write!(
-            &mut self.html,
-            "<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">",
-            i + 1
-        )
-        .unwrap();
-    }
-
-    fn close_row(&mut self) {
-        self.html.push_str("</td></tr>");
     }
 
     // open_current_scopes opens a span for every scope that was still
@@ -187,3 +166,25 @@ impl<'a> ClassedTableGenerator<'a> {
         }
     }
 }
+
+fn open_table(s: &mut String) {
+    s.push_str("<table><tbody>");
+}
+
+fn close_table(s: &mut String) {
+    s.push_str("</tbody></table>");
+}
+
+fn open_row(s: &mut String, i: usize) {
+    write!(
+        s,
+        "<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">",
+        i + 1
+        )
+        .unwrap();
+}
+
+fn close_row(s: &mut String) {
+    s.push_str("</td></tr>");
+}
+
