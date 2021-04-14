@@ -186,7 +186,7 @@ fn css_table_highlight(q: Json<CSSTableQuery>) -> JsonValue {
             &syntax_def,
             &q.code,
             q.line_length_limit,
-            ClassStyle::SpacedPrefixed { prefix: "hl-" },
+            ClassStyle::SpacedPrefixed{prefix: "hl-"},
         )
         .generate();
 
