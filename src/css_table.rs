@@ -1,5 +1,5 @@
-use std::fmt::Write;
 use super::SYNTAX_SET;
+use std::fmt::Write;
 use std::path::Path;
 use syntect::{
     html::ClassStyle,
@@ -10,7 +10,6 @@ use syntect::{
     util::LinesWithEndings,
 };
 
-
 #[derive(Deserialize)]
 pub struct CSSTableQuery {
     filepath: String,
@@ -20,8 +19,6 @@ pub struct CSSTableQuery {
     // not be highlighted
     line_length_limit: Option<usize>,
 }
-
-
 
 pub fn css_table_highlight(q: CSSTableQuery) -> String {
     SYNTAX_SET.with(|syntax_set| {
@@ -53,7 +50,7 @@ pub fn css_table_highlight(q: CSSTableQuery) -> String {
             &syntax_def,
             &q.code,
             q.line_length_limit,
-            ClassStyle::SpacedPrefixed{prefix: "hl-"},
+            ClassStyle::SpacedPrefixed { prefix: "hl-" },
         )
         .generate()
     })
@@ -230,8 +227,8 @@ fn open_row(s: &mut String, i: usize) {
         s,
         "<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">",
         i + 1
-        )
-        .unwrap();
+    )
+    .unwrap();
 }
 
 fn close_row(s: &mut String) {
@@ -290,7 +287,7 @@ mod tests {
 
     #[test]
     fn simple_css() {
-        let query = CSSTableQuery{
+        let query = CSSTableQuery {
             filepath: "test.go".to_string(),
             code: "package main\n".to_string(),
             line_length_limit: None,
@@ -313,7 +310,7 @@ mod tests {
 
     #[test]
     fn no_highlight_long_line() {
-        let query = CSSTableQuery{
+        let query = CSSTableQuery {
             filepath: "test.go".to_string(),
             code: "package main\n".to_string(),
             line_length_limit: Some(5),
@@ -331,9 +328,10 @@ mod tests {
 
     #[test]
     fn multi_line_java() {
-        let query = CSSTableQuery{
+        let query = CSSTableQuery {
             filepath: "test.java".to_string(),
-            code: "package com.lwl.boot.model;\n\npublic class Item implements Serializable {}".to_string(),
+            code: "package com.lwl.boot.model;\n\npublic class Item implements Serializable {}"
+                .to_string(),
             line_length_limit: None,
         };
         let expected = "<table>\

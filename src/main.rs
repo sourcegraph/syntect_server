@@ -1,10 +1,14 @@
 #![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
 
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 extern crate rayon;
-#[macro_use] extern crate rocket;
-#[macro_use] extern crate rocket_contrib;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate rocket;
+#[macro_use]
+extern crate rocket_contrib;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 extern crate syntect;
 
@@ -12,11 +16,7 @@ use rocket_contrib::json::{Json, JsonValue};
 use std::env;
 use std::panic;
 use std::path::Path;
-use syntect::{
-    highlighting::ThemeSet,
-    html::{highlighted_html_for_string},
-    parsing::SyntaxSet,
-};
+use syntect::{highlighting::ThemeSet, html::highlighted_html_for_string, parsing::SyntaxSet};
 
 mod css_table;
 use css_table::{css_table_highlight, CSSTableQuery};
@@ -50,9 +50,7 @@ fn index(q: Json<Query>) -> JsonValue {
     // and instead Syntect would return Result types when failures occur. This
     // will require some non-trivial work upstream:
     // https://github.com/trishume/syntect/issues/98
-    let result = panic::catch_unwind(|| {
-        highlight(q)
-    });
+    let result = panic::catch_unwind(|| highlight(q));
     match result {
         Ok(v) => v,
         Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
@@ -77,11 +75,13 @@ fn highlight(q: Json<Query>) -> JsonValue {
             match syntax_set.find_syntax_by_extension(&q.extension) {
                 Some(v) => v,
                 None =>
-                    // Fall back: Determine syntax definition by first line.
+                // Fall back: Determine syntax definition by first line.
+                {
                     match syntax_set.find_syntax_by_first_line(&q.code) {
                         Some(v) => v,
                         None => return json!({"error": "invalid extension"}),
-                },
+                    }
+                }
             }
         } else {
             // Split the input path ("foo/myfile.go") into file name
@@ -103,12 +103,14 @@ fn highlight(q: Json<Query>) -> JsonValue {
             // see https://github.com/trishume/syntect/pull/170
             match syntax_set.find_syntax_by_extension(file_name) {
                 Some(v) => v,
-                None => 
-                    // Now try to find the syntax by the actual file extension.
+                None =>
+                // Now try to find the syntax by the actual file extension.
+                {
                     match syntax_set.find_syntax_by_extension(extension) {
                         Some(v) => v,
                         None =>
-                            // Fall back: Determine syntax definition by first line.
+                        // Fall back: Determine syntax definition by first line.
+                        {
                             match syntax_set.find_syntax_by_first_line(&q.code) {
                                 Some(v) => v,
                                 None => {
@@ -118,8 +120,10 @@ fn highlight(q: Json<Query>) -> JsonValue {
                                     // output structure.
                                     syntax_set.find_syntax_plain_text()
                                 }
-                        },
+                            }
+                        }
                     }
+                }
             }
         };
 
@@ -132,6 +136,7 @@ fn highlight(q: Json<Query>) -> JsonValue {
         })
     })
 }
+
 #[post("/css_table", format = "application/json", data = "<q>")]
 fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
     // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
@@ -139,11 +144,10 @@ fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
     // will require some non-trivial work upstream:
     // https://github.com/trishume/syntect/issues/98
     match panic::catch_unwind(|| css_table_highlight(q.into_inner())) {
-        Ok(v) => json!({"data": v}) ,
+        Ok(v) => json!({ "data": v }),
         Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
     }
 }
-
 
 #[get("/health")]
 fn health() -> &'static str {
@@ -179,9 +183,11 @@ fn list_features() {
 fn rocket() -> rocket::Rocket {
     // Only list features if QUIET != "true"
     match env::var("QUIET") {
-        Ok(v) => if v != "true" {
-            list_features()
-        },
+        Ok(v) => {
+            if v != "true" {
+                list_features()
+            }
+        }
         Err(_) => list_features(),
     };
 
@@ -189,4 +195,3 @@ fn rocket() -> rocket::Rocket {
         .mount("/", routes![index, css_table_index, health])
         .register(catchers![not_found])
 }
-
