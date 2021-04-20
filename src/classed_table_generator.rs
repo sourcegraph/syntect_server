@@ -1,6 +1,5 @@
 use std::fmt::Write;
 use syntect::{
-    escape::Escape,
     html::ClassStyle,
     parsing::{
         BasicScopeStackOp, ParseState, Scope, ScopeStack, ScopeStackOp, SyntaxReference, SyntaxSet,
@@ -186,4 +185,45 @@ fn open_row(s: &mut String, i: usize) {
 
 fn close_row(s: &mut String) {
     s.push_str("</td></tr>");
+}
+
+use std::fmt;
+
+/// Wrapper struct which will emit the HTML-escaped version of the contained
+/// string when passed to a format string.
+/// TODO(camdencheek): Use the upstream version of this once
+/// https://github.com/trishume/syntect/pull/330 is merged
+pub struct Escape<'a>(pub &'a str);
+
+impl<'a> fmt::Display for Escape<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Because the internet is always right, turns out there's not that many
+        // characters to escape: http://stackoverflow.com/questions/7381974
+        let Escape(s) = *self;
+        let pile_o_bits = s;
+        let mut last = 0;
+        for (i, ch) in s.bytes().enumerate() {
+            match ch as char {
+                '<' | '>' | '&' | '\'' | '"' => {
+                    fmt.write_str(&pile_o_bits[last..i])?;
+                    let s = match ch as char {
+                        '>' => "&gt;",
+                        '<' => "&lt;",
+                        '&' => "&amp;",
+                        '\'' => "&#39;",
+                        '"' => "&quot;",
+                        _ => unreachable!(),
+                    };
+                    fmt.write_str(s)?;
+                    last = i + 1;
+                }
+                _ => {}
+            }
+        }
+
+        if last < s.len() {
+            fmt.write_str(&pile_o_bits[last..])?;
+        }
+        Ok(())
+    }
 }
