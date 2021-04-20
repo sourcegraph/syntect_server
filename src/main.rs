@@ -14,12 +14,12 @@ use std::panic;
 use std::path::Path;
 use syntect::{
     highlighting::ThemeSet,
-    html::{highlighted_html_for_string, ClassStyle},
+    html::{highlighted_html_for_string},
     parsing::SyntaxSet,
 };
 
-mod classed_table_generator;
-use classed_table_generator::ClassedTableGenerator;
+mod css_table;
+use css_table::{css_table_highlight, CSSTableQuery};
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -132,18 +132,6 @@ fn highlight(q: Json<Query>) -> JsonValue {
         })
     })
 }
-
-#[derive(Deserialize)]
-struct CSSTableQuery {
-    filepath: String,
-    code: String,
-
-    // If set, lines with size greater than line_length_limit will
-    // not be highlighted
-    line_length_limit: Option<usize>,
-}
-
-
 #[post("/css_table", format = "application/json", data = "<q>")]
 fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
     // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
@@ -156,41 +144,6 @@ fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
     }
 }
 
-fn css_table_highlight(q: CSSTableQuery) -> String {
-    SYNTAX_SET.with(|syntax_set| {
-        // Split the input path ("foo/myfile.go") into file name
-        // ("myfile.go") and extension ("go").
-        let path = Path::new(&q.filepath);
-        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        let extension = path.extension().and_then(|x| x.to_str()).unwrap_or("");
-
-        // To determine the syntax definition, we must first check using the
-        // filename as some syntaxes match an "extension" that is actually a
-        // whole file name (e.g. "Dockerfile" or "CMakeLists.txt"); see e.g. https://github.com/trishume/syntect/pull/170
-        //
-        // After that, if we do not find any syntax, we can actually check by
-        // extension and lastly via the first line of the code.
-
-        // First try to find a syntax whose "extension" matches our file
-        // name. This is done due to some syntaxes matching an "extension"
-        // that is actually a whole file name (e.g. "Dockerfile" or "CMakeLists.txt")
-        // see https://github.com/trishume/syntect/pull/170
-        let syntax_def = syntax_set
-            .find_syntax_by_extension(file_name)
-            .or_else(|| syntax_set.find_syntax_by_extension(extension))
-            .or_else(|| syntax_set.find_syntax_by_first_line(&q.code))
-            .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
-
-        ClassedTableGenerator::new(
-            &syntax_set,
-            &syntax_def,
-            &q.code,
-            q.line_length_limit,
-            ClassStyle::SpacedPrefixed{prefix: "hl-"},
-        )
-        .generate()
-    })
-}
 
 #[get("/health")]
 fn health() -> &'static str {
@@ -237,119 +190,3 @@ fn rocket() -> rocket::Rocket {
         .register(catchers![not_found])
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{css_table_highlight, CSSTableQuery};
-
-    fn test_css_table_highlight(query: CSSTableQuery, expected: &str) {
-        let output = css_table_highlight(query);
-        assert_eq!(expected, output.as_str());
-    }
-
-    #[test]
-    fn simple_css() {
-        let query = CSSTableQuery{
-            filepath: "test.go".to_string(),
-            code: "package main\n".to_string(),
-            line_length_limit: None,
-        };
-        let expected = "<table>\
-                            <tbody>\
-                                <tr>\
-                                    <td class=\"line\" data-line=\"1\"/>\
-                                    <td class=\"code\">\
-                                        <span class=\"hl-source hl-go\">\
-                                            <span class=\"hl-keyword hl-other hl-package hl-go\">package</span> \
-                                            <span class=\"hl-variable hl-other hl-go\">main</span>\n\
-                                        </span>\
-                                    </td>\
-                                </tr>\
-                            </tbody>\
-                        </table>";
-        test_css_table_highlight(query, expected)
-    }
-
-    #[test]
-    fn no_highlight_long_line() {
-        let query = CSSTableQuery{
-            filepath: "test.go".to_string(),
-            code: "package main\n".to_string(),
-            line_length_limit: Some(5),
-        };
-        let expected = "<table>\
-                            <tbody>\
-                                <tr>\
-                                    <td class=\"line\" data-line=\"1\"/>\
-                                    <td class=\"code\">package main\n</td>\
-                                </tr>\
-                            </tbody>\
-                        </table>";
-        test_css_table_highlight(query, expected)
-    }
-
-    #[test]
-    fn multi_line_java() {
-        let query = CSSTableQuery{
-            filepath: "test.java".to_string(),
-            code: "package com.lwl.boot.model;\n\npublic class Item implements Serializable {}".to_string(),
-            line_length_limit: None,
-        };
-        let expected = "<table>\
-                            <tbody>\
-                                <tr>\
-                                    <td class=\"line\" data-line=\"1\"/>\
-                                    <td class=\"code\">\
-                                        <span class=\"hl-source hl-java\">\
-                                            <span class=\"hl-meta hl-package-declaration hl-java\">\
-                                                <span class=\"hl-keyword hl-other hl-package hl-java\">package</span> \
-                                                <span class=\"hl-meta hl-path hl-java\">\
-                                                    <span class=\"hl-entity hl-name hl-namespace hl-java\">\
-                                                        com\
-                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
-                                                        lwl\
-                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
-                                                        boot\
-                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
-                                                        model\
-                                                    </span>\
-                                                </span>\
-                                            </span>\
-                                            <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\n\
-                                        </span>\
-                                    </td>\
-                                </tr>\
-                                <tr>\
-                                    <td class=\"line\" data-line=\"2\"/>\
-                                    <td class=\"code\">\
-                                        <span class=\"hl-source hl-java\">\n</span>\
-                                    </td>\
-                                </tr>\
-                                <tr>\
-                                    <td class=\"line\" data-line=\"3\"/>\
-                                    <td class=\"code\">\
-                                    <span class=\"hl-source hl-java\">\
-                                        <span class=\"hl-meta hl-class hl-java\">\
-                                            <span class=\"hl-storage hl-modifier hl-java\">public</span> \
-                                            <span class=\"hl-meta hl-class hl-identifier hl-java\">\
-                                                <span class=\"hl-storage hl-type hl-java\">class</span> \
-                                                <span class=\"hl-entity hl-name hl-class hl-java\">Item</span>\
-                                            </span> \
-                                            <span class=\"hl-meta hl-class hl-implements hl-java\">\
-                                                <span class=\"hl-keyword hl-declaration hl-implements hl-java\">implements</span> \
-                                                <span class=\"hl-entity hl-other hl-inherited-class hl-java\">Serializable</span> \
-                                            </span>\
-                                            <span class=\"hl-meta hl-class hl-body hl-java\">\
-                                                <span class=\"hl-meta hl-block hl-java\">\
-                                                    <span class=\"hl-punctuation hl-section hl-block hl-begin hl-java\">{</span>\
-                                                    <span class=\"hl-punctuation hl-section hl-block hl-end hl-java\">}</span>\
-                                                </span>\
-                                            </span>\
-                                        </span>\
-                                    </span>\
-                                </td>\
-                            </tr>\
-                        </tbody>\
-                    </table>";
-        test_css_table_highlight(query, expected)
-    }
-}
