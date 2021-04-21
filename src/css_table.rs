@@ -1,6 +1,4 @@
-use super::SYNTAX_SET;
 use std::fmt::Write;
-use std::path::Path;
 use syntect::{
     html::ClassStyle,
     parsing::{
@@ -9,52 +7,6 @@ use syntect::{
     },
     util::LinesWithEndings,
 };
-
-#[derive(Deserialize)]
-pub struct CSSTableQuery {
-    filepath: String,
-    code: String,
-
-    // If set, lines with size greater than line_length_limit will
-    // not be highlighted
-    line_length_limit: Option<usize>,
-}
-
-pub fn css_table_highlight(q: CSSTableQuery) -> String {
-    SYNTAX_SET.with(|syntax_set| {
-        // Split the input path ("foo/myfile.go") into file name
-        // ("myfile.go") and extension ("go").
-        let path = Path::new(&q.filepath);
-        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        let extension = path.extension().and_then(|x| x.to_str()).unwrap_or("");
-
-        // To determine the syntax definition, we must first check using the
-        // filename as some syntaxes match an "extension" that is actually a
-        // whole file name (e.g. "Dockerfile" or "CMakeLists.txt"); see e.g. https://github.com/trishume/syntect/pull/170
-        //
-        // After that, if we do not find any syntax, we can actually check by
-        // extension and lastly via the first line of the code.
-
-        // First try to find a syntax whose "extension" matches our file
-        // name. This is done due to some syntaxes matching an "extension"
-        // that is actually a whole file name (e.g. "Dockerfile" or "CMakeLists.txt")
-        // see https://github.com/trishume/syntect/pull/170
-        let syntax_def = syntax_set
-            .find_syntax_by_extension(file_name)
-            .or_else(|| syntax_set.find_syntax_by_extension(extension))
-            .or_else(|| syntax_set.find_syntax_by_first_line(&q.code))
-            .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
-
-        ClassedTableGenerator::new(
-            &syntax_set,
-            &syntax_def,
-            &q.code,
-            q.line_length_limit,
-            ClassStyle::SpacedPrefixed { prefix: "hl-" },
-        )
-        .generate()
-    })
-}
 
 /// The ClassedTableGenerator generates HTML tables of the following form:
 /// <table>
@@ -278,19 +230,22 @@ impl<'a> fmt::Display for Escape<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{css_table_highlight, CSSTableQuery};
+    use crate::{highlight, Query};
 
-    fn test_css_table_highlight(query: CSSTableQuery, expected: &str) {
-        let output = css_table_highlight(query);
-        assert_eq!(expected, output.as_str());
+    fn test_css_table_highlight(q: Query, expected: &str) {
+        let result = highlight(q);
+        assert_eq!(json!({"data": expected, "plaintext": false}), result);
     }
 
     #[test]
     fn simple_css() {
-        let query = CSSTableQuery {
+        let query = Query {
             filepath: "test.go".to_string(),
             code: "package main\n".to_string(),
             line_length_limit: None,
+            extension: String::new(),
+            theme: String::new(),
+            css: true,
         };
         let expected = "<table>\
                             <tbody>\
@@ -310,10 +265,13 @@ mod tests {
 
     #[test]
     fn no_highlight_long_line() {
-        let query = CSSTableQuery {
+        let query = Query {
             filepath: "test.go".to_string(),
             code: "package main\n".to_string(),
             line_length_limit: Some(5),
+            extension: String::new(),
+            theme: String::new(),
+            css: true,
         };
         let expected = "<table>\
                             <tbody>\
@@ -328,11 +286,14 @@ mod tests {
 
     #[test]
     fn multi_line_java() {
-        let query = CSSTableQuery {
+        let query = Query {
             filepath: "test.java".to_string(),
             code: "package com.lwl.boot.model;\n\npublic class Item implements Serializable {}"
                 .to_string(),
             line_length_limit: None,
+            extension: String::new(),
+            theme: String::new(),
+            css: true,
         };
         let expected = "<table>\
                             <tbody>\

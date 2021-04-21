@@ -16,10 +16,10 @@ use rocket_contrib::json::{Json, JsonValue};
 use std::env;
 use std::panic;
 use std::path::Path;
-use syntect::{highlighting::ThemeSet, html::highlighted_html_for_string, parsing::SyntaxSet};
+use syntect::{highlighting::ThemeSet, html::{ClassStyle, highlighted_html_for_string}, parsing::SyntaxSet};
 
 mod css_table;
-use css_table::{css_table_highlight, CSSTableQuery};
+use css_table::ClassedTableGenerator;
 
 thread_local! {
     static SYNTAX_SET: SyntaxSet = SyntaxSet::load_defaults_newlines();
@@ -40,7 +40,18 @@ struct Query {
     #[serde(default)]
     filepath: String,
 
+
+    // If css is set, the highlighted code will be returned as a HTML table with CSS classes
+    // annotating the highlighted types.
+    #[serde(default)]
+    css: bool,
+
+    // line_length_limit is ignored if css is false
+    line_length_limit: Option<usize>,
+
+    // theme is ignored if css is true
     theme: String,
+
     code: String,
 }
 
@@ -50,23 +61,15 @@ fn index(q: Json<Query>) -> JsonValue {
     // and instead Syntect would return Result types when failures occur. This
     // will require some non-trivial work upstream:
     // https://github.com/trishume/syntect/issues/98
-    let result = panic::catch_unwind(|| highlight(q));
+    let result = panic::catch_unwind(|| highlight(q.into_inner()));
     match result {
         Ok(v) => v,
         Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
     }
 }
 
-fn highlight(q: Json<Query>) -> JsonValue {
+fn highlight(q: Query) -> JsonValue {
     SYNTAX_SET.with(|syntax_set| {
-        // Determine theme to use.
-        //
-        // TODO(slimsag): We could let the query specify the theme file's actual
-        // bytes? e.g. via `load_from_reader`.
-        let theme = match THEME_SET.themes.get(&q.theme) {
-            Some(v) => v,
-            None => return json!({"error": "invalid theme", "code": "invalid_theme"}),
-        };
 
         // Determine syntax definition by extension.
         let mut is_plaintext = false;
@@ -101,52 +104,48 @@ fn highlight(q: Json<Query>) -> JsonValue {
             // name. This is done due to some syntaxes matching an "extension"
             // that is actually a whole file name (e.g. "Dockerfile" or "CMakeLists.txt")
             // see https://github.com/trishume/syntect/pull/170
-            match syntax_set.find_syntax_by_extension(file_name) {
-                Some(v) => v,
-                None =>
-                // Now try to find the syntax by the actual file extension.
-                {
-                    match syntax_set.find_syntax_by_extension(extension) {
-                        Some(v) => v,
-                        None =>
-                        // Fall back: Determine syntax definition by first line.
-                        {
-                            match syntax_set.find_syntax_by_first_line(&q.code) {
-                                Some(v) => v,
-                                None => {
-                                    is_plaintext = true;
-
-                                    // Render plain text, so the user gets the same HTML
-                                    // output structure.
-                                    syntax_set.find_syntax_plain_text()
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            syntax_set
+                .find_syntax_by_extension(file_name)
+                .or_else(|| syntax_set.find_syntax_by_extension(extension))
+                .or_else(|| syntax_set.find_syntax_by_first_line(&q.code))
+                .unwrap_or_else(|| {
+                    is_plaintext = true;
+                    syntax_set.find_syntax_plain_text()
+                })
         };
 
-        // TODO(slimsag): return the theme's background color (and other info??) to caller?
-        // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
+        if q.css {
+            let output = ClassedTableGenerator::new(
+                &syntax_set,
+                &syntax_def,
+                &q.code,
+                q.line_length_limit,
+                ClassStyle::SpacedPrefixed { prefix: "hl-" },
+            ).generate();
 
-        json!({
-            "data": highlighted_html_for_string(&q.code, &syntax_set, &syntax_def, theme),
-            "plaintext": is_plaintext,
-        })
+            json!({
+                "data": output,
+                "plaintext": is_plaintext,
+            })
+        } else {
+            // TODO(slimsag): return the theme's background color (and other info??) to caller?
+            // https://github.com/trishume/syntect/blob/c8b47758a3872d478c7fc740782cd468b2c0a96b/examples/synhtml.rs#L24
+
+            // Determine theme to use.
+            //
+            // TODO(slimsag): We could let the query specify the theme file's actual
+            // bytes? e.g. via `load_from_reader`.
+            let theme = match THEME_SET.themes.get(&q.theme) {
+                Some(v) => v,
+                None => return json!({"error": "invalid theme", "code": "invalid_theme"}),
+            };
+
+            json!({
+                "data": highlighted_html_for_string(&q.code, &syntax_set, &syntax_def, theme),
+                "plaintext": is_plaintext,
+            })
+        }
     })
-}
-
-#[post("/css_table", format = "application/json", data = "<q>")]
-fn css_table_index(q: Json<CSSTableQuery>) -> JsonValue {
-    // TODO(slimsag): In an ideal world we wouldn't be relying on catch_unwind
-    // and instead Syntect would return Result types when failures occur. This
-    // will require some non-trivial work upstream:
-    // https://github.com/trishume/syntect/issues/98
-    match panic::catch_unwind(|| css_table_highlight(q.into_inner())) {
-        Ok(v) => json!({ "data": v }),
-        Err(_) => json!({"error": "panic while highlighting code", "code": "panic"}),
-    }
 }
 
 #[get("/health")]
@@ -192,6 +191,6 @@ fn rocket() -> rocket::Rocket {
     };
 
     rocket::ignite()
-        .mount("/", routes![index, css_table_index, health])
+        .mount("/", routes![index, health])
         .register(catchers![not_found])
 }
