@@ -16,7 +16,11 @@ use rocket_contrib::json::{Json, JsonValue};
 use std::env;
 use std::panic;
 use std::path::Path;
-use syntect::{highlighting::ThemeSet, html::{ClassStyle, highlighted_html_for_string}, parsing::SyntaxSet};
+use syntect::{
+    highlighting::ThemeSet,
+    html::{highlighted_html_for_string, ClassStyle},
+    parsing::SyntaxSet,
+};
 
 mod css_table;
 use css_table::ClassedTableGenerator;
@@ -39,7 +43,6 @@ struct Query {
     // default empty string value for backwards compat with clients who do not specify this field.
     #[serde(default)]
     filepath: String,
-
 
     // If css is set, the highlighted code will be returned as a HTML table with CSS classes
     // annotating the highlighted types.
@@ -70,7 +73,6 @@ fn index(q: Json<Query>) -> JsonValue {
 
 fn highlight(q: Query) -> JsonValue {
     SYNTAX_SET.with(|syntax_set| {
-
         // Determine syntax definition by extension.
         let mut is_plaintext = false;
         let syntax_def = if q.filepath == "" {
@@ -121,7 +123,8 @@ fn highlight(q: Query) -> JsonValue {
                 &q.code,
                 q.line_length_limit,
                 ClassStyle::SpacedPrefixed { prefix: "hl-" },
-            ).generate();
+            )
+            .generate();
 
             json!({
                 "data": output,
