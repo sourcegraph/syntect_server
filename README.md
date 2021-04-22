@@ -59,6 +59,14 @@ Invoke `cargo build --release` and an optimized binary will be built (e.g. to `.
 
 Run `./publish.sh` after merging your changes.
 
+Once published, the image version will need to be updated in the following locations:
+- [`sourcegraph/sourcegraph > dev/syntect_server.sh`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/dev/syntect_server.sh?subtree=true#L26:82)
+- [`sourcegraph/sourcegraph > docker-images/syntax-highlighter/build.sh`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/docker-images/syntax-highlighter/build.sh?subtree=true#L9:29)
+- [`sourcegraph/sourcegraph > cmd/server/Dockerfile`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/cmd/server/Dockerfile?subtree=true#L54:13)
+- [`sourcegraph/sourcegraph > sg.config.yaml`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/sg.config.yaml?subtree=true#L206:7)
+
+Additionally, it's worth doing a [search](https://sourcegraph.com/search?q=repo:%5Egithub%5C.com/sourcegraph/sourcegraph%24+sourcegraph/syntect_server:&patternType=literal) for other uses in case this list is stale.
+
 ## Code hygiene
 
 - Use `cargo fmt` or an editor extension to format code.
