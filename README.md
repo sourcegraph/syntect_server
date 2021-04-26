@@ -59,7 +59,10 @@ Invoke `cargo build --release` and an optimized binary will be built (e.g. to `.
 
 Run `./publish.sh` after merging your changes.
 
-Once published, the image version will need to be updated in the following locations:
+
+## Updating Sourcegraph
+
+Once published, the image version will need to be updated in the following locations to make Sourcegraph use it:
 - [`sourcegraph/sourcegraph > dev/syntect_server.sh`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/dev/syntect_server.sh?subtree=true#L26:82)
 - [`sourcegraph/sourcegraph > docker-images/syntax-highlighter/build.sh`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/docker-images/syntax-highlighter/build.sh?subtree=true#L9:29)
 - [`sourcegraph/sourcegraph > cmd/server/Dockerfile`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/cmd/server/Dockerfile?subtree=true#L54:13)
