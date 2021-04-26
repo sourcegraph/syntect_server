@@ -122,10 +122,14 @@ impl<'a> ClassedTableGenerator<'a> {
         let mut span_empty = false;
         let mut span_start = 0;
 
+        fn trim_newline(s: &str) -> &str {
+            s.trim_end_matches(|c| c == '\n').trim_end_matches(|c| c == '\r')
+        }
+
         for &(i, ref op) in ops {
             if i > cur_index {
                 span_empty = false;
-                write!(&mut self.html, "{}", Escape(&line[cur_index..i])).unwrap();
+                write!(&mut self.html, "{}", Escape(trim_newline(&line[cur_index..i]))).unwrap();
                 cur_index = i
             }
             let mut stack = self.stack.clone();
@@ -146,7 +150,7 @@ impl<'a> ClassedTableGenerator<'a> {
             });
             self.stack = stack;
         }
-        write!(&mut self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
+        write!(&mut self.html, "{}", Escape(trim_newline(&line[cur_index..]))).unwrap();
     }
 
     // write_classes_for_scope is modified from highlight::scope_to_classes
