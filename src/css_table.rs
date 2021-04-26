@@ -258,7 +258,7 @@ mod tests {
                                     <td class=\"code\">\
                                         <span class=\"hl-source hl-go\">\
                                             <span class=\"hl-keyword hl-other hl-package hl-go\">package</span> \
-                                            <span class=\"hl-variable hl-other hl-go\">main</span>\n\
+                                            <span class=\"hl-variable hl-other hl-go\">main</span>\
                                         </span>\
                                     </td>\
                                 </tr>\
@@ -319,14 +319,14 @@ mod tests {
                                                     </span>\
                                                 </span>\
                                             </span>\
-                                            <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\n\
+                                            <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\
                                         </span>\
                                     </td>\
                                 </tr>\
                                 <tr>\
                                     <td class=\"line\" data-line=\"2\"/>\
                                     <td class=\"code\">\
-                                        <span class=\"hl-source hl-java\">\n</span>\
+                                        <span class=\"hl-source hl-java\"></span>\
                                     </td>\
                                 </tr>\
                                 <tr>\
