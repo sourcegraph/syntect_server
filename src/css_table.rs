@@ -181,14 +181,14 @@ fn close_table(s: &mut String) {
 fn open_row(s: &mut String, i: usize) {
     write!(
         s,
-        "<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\">",
+        "<tr><td class=\"line\" data-line=\"{}\"/><td class=\"code\"><div>",
         i + 1
     )
     .unwrap();
 }
 
 fn close_row(s: &mut String) {
-    s.push_str("</td></tr>");
+    s.push_str("</div></td></tr>");
 }
 
 use std::fmt;
@@ -256,10 +256,12 @@ mod tests {
                                 <tr>\
                                     <td class=\"line\" data-line=\"1\"/>\
                                     <td class=\"code\">\
-                                        <span class=\"hl-source hl-go\">\
-                                            <span class=\"hl-keyword hl-other hl-package hl-go\">package</span> \
-                                            <span class=\"hl-variable hl-other hl-go\">main</span>\
-                                        </span>\
+                                        <div>\
+                                            <span class=\"hl-source hl-go\">\
+                                                <span class=\"hl-keyword hl-other hl-package hl-go\">package</span> \
+                                                <span class=\"hl-variable hl-other hl-go\">main</span>\
+                                            </span>\
+                                        </div>\
                                     </td>\
                                 </tr>\
                             </tbody>\
@@ -281,7 +283,9 @@ mod tests {
                             <tbody>\
                                 <tr>\
                                     <td class=\"line\" data-line=\"1\"/>\
-                                    <td class=\"code\">package main\n</td>\
+                                    <td class=\"code\">\
+                                        <div>package main\n</div>\
+                                    </td>\
                                 </tr>\
                             </tbody>\
                         </table>";
@@ -304,57 +308,63 @@ mod tests {
                                 <tr>\
                                     <td class=\"line\" data-line=\"1\"/>\
                                     <td class=\"code\">\
-                                        <span class=\"hl-source hl-java\">\
-                                            <span class=\"hl-meta hl-package-declaration hl-java\">\
-                                                <span class=\"hl-keyword hl-other hl-package hl-java\">package</span> \
-                                                <span class=\"hl-meta hl-path hl-java\">\
-                                                    <span class=\"hl-entity hl-name hl-namespace hl-java\">\
-                                                        com\
-                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
-                                                        lwl\
-                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
-                                                        boot\
-                                                        <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
-                                                        model\
+                                        <div>\
+                                            <span class=\"hl-source hl-java\">\
+                                                <span class=\"hl-meta hl-package-declaration hl-java\">\
+                                                    <span class=\"hl-keyword hl-other hl-package hl-java\">package</span> \
+                                                    <span class=\"hl-meta hl-path hl-java\">\
+                                                        <span class=\"hl-entity hl-name hl-namespace hl-java\">\
+                                                            com\
+                                                            <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
+                                                            lwl\
+                                                            <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
+                                                            boot\
+                                                            <span class=\"hl-punctuation hl-accessor hl-dot hl-java\">.</span>\
+                                                            model\
+                                                        </span>\
                                                     </span>\
                                                 </span>\
+                                                <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\
                                             </span>\
-                                            <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\
-                                        </span>\
+                                        </div>\
                                     </td>\
                                 </tr>\
                                 <tr>\
                                     <td class=\"line\" data-line=\"2\"/>\
                                     <td class=\"code\">\
-                                        <span class=\"hl-source hl-java\"></span>\
+                                        <div>\
+                                            <span class=\"hl-source hl-java\"></span>\
+                                        </div>\
                                     </td>\
                                 </tr>\
                                 <tr>\
                                     <td class=\"line\" data-line=\"3\"/>\
                                     <td class=\"code\">\
-                                    <span class=\"hl-source hl-java\">\
-                                        <span class=\"hl-meta hl-class hl-java\">\
-                                            <span class=\"hl-storage hl-modifier hl-java\">public</span> \
-                                            <span class=\"hl-meta hl-class hl-identifier hl-java\">\
-                                                <span class=\"hl-storage hl-type hl-java\">class</span> \
-                                                <span class=\"hl-entity hl-name hl-class hl-java\">Item</span>\
-                                            </span> \
-                                            <span class=\"hl-meta hl-class hl-implements hl-java\">\
-                                                <span class=\"hl-keyword hl-declaration hl-implements hl-java\">implements</span> \
-                                                <span class=\"hl-entity hl-other hl-inherited-class hl-java\">Serializable</span> \
-                                            </span>\
-                                            <span class=\"hl-meta hl-class hl-body hl-java\">\
-                                                <span class=\"hl-meta hl-block hl-java\">\
-                                                    <span class=\"hl-punctuation hl-section hl-block hl-begin hl-java\">{</span>\
-                                                    <span class=\"hl-punctuation hl-section hl-block hl-end hl-java\">}</span>\
+                                        <div>\
+                                            <span class=\"hl-source hl-java\">\
+                                                <span class=\"hl-meta hl-class hl-java\">\
+                                                    <span class=\"hl-storage hl-modifier hl-java\">public</span> \
+                                                    <span class=\"hl-meta hl-class hl-identifier hl-java\">\
+                                                        <span class=\"hl-storage hl-type hl-java\">class</span> \
+                                                        <span class=\"hl-entity hl-name hl-class hl-java\">Item</span>\
+                                                    </span> \
+                                                    <span class=\"hl-meta hl-class hl-implements hl-java\">\
+                                                        <span class=\"hl-keyword hl-declaration hl-implements hl-java\">implements</span> \
+                                                        <span class=\"hl-entity hl-other hl-inherited-class hl-java\">Serializable</span> \
+                                                    </span>\
+                                                    <span class=\"hl-meta hl-class hl-body hl-java\">\
+                                                        <span class=\"hl-meta hl-block hl-java\">\
+                                                            <span class=\"hl-punctuation hl-section hl-block hl-begin hl-java\">{</span>\
+                                                            <span class=\"hl-punctuation hl-section hl-block hl-end hl-java\">}</span>\
+                                                        </span>\
+                                                    </span>\
                                                 </span>\
                                             </span>\
-                                        </span>\
-                                    </span>\
-                                </td>\
-                            </tr>\
-                        </tbody>\
-                    </table>";
+                                        </div>\
+                                    </td>\
+                                </tr>\
+                            </tbody>\
+                        </table>";
         test_css_table_highlight(query, expected)
     }
 }
