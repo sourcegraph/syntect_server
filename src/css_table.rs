@@ -61,7 +61,7 @@ impl<'a> ClassedTableGenerator<'a> {
         for (i, line) in LinesWithEndings::from(self.code).enumerate() {
             open_row(&mut self.html, i);
             if self.max_line_len.map_or(false, |n| line.len() > n) {
-                self.html.push_str(line);
+                self.write_escaped_html(&line);
             } else {
                 self.write_spans_for_line(&line);
             }
@@ -125,7 +125,7 @@ impl<'a> ClassedTableGenerator<'a> {
         for &(i, ref op) in ops {
             if i > cur_index {
                 span_empty = false;
-                write!(&mut self.html, "{}", Escape(&line[cur_index..i])).unwrap();
+                self.write_escaped_html(&line[cur_index..i]);
                 cur_index = i
             }
             let mut stack = self.stack.clone();
@@ -146,7 +146,7 @@ impl<'a> ClassedTableGenerator<'a> {
             });
             self.stack = stack;
         }
-        write!(&mut self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
+        self.write_escaped_html(&line[cur_index..]);
     }
 
     // write_classes_for_scope is modified from highlight::scope_to_classes
@@ -163,6 +163,10 @@ impl<'a> ClassedTableGenerator<'a> {
             }
             self.html.push_str(atom_s);
         }
+    }
+
+    fn write_escaped_html(&mut self, s: &str) {
+        write!(&mut self.html, "{}", Escape(s)).unwrap()
     }
 }
 
@@ -258,6 +262,30 @@ mod tests {
                                                 <span class=\"hl-variable hl-other hl-go\">main</span>\n\
                                             </span>\
                                         </div>\
+                                    </td>\
+                                </tr>\
+                            </tbody>\
+                        </table>";
+        test_css_table_highlight(query, expected)
+    }
+
+    // See https://github.com/sourcegraph/sourcegraph/issues/20537
+    #[test]
+    fn long_line_gets_escaped() {
+        let query = Query {
+            filepath: "test.html".to_string(),
+            code: "<div>test</div>".to_string(),
+            line_length_limit: Some(10),
+            extension: String::new(),
+            theme: String::new(),
+            css: true,
+        };
+        let expected = "<table>\
+                            <tbody>\
+                                <tr>\
+                                    <td class=\"line\" data-line=\"1\"/>\
+                                    <td class=\"code\">\
+                                        <div>&lt;div&gt;test&lt;/div&gt;</div>\
                                     </td>\
                                 </tr>\
                             </tbody>\
