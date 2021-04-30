@@ -122,14 +122,10 @@ impl<'a> ClassedTableGenerator<'a> {
         let mut span_empty = false;
         let mut span_start = 0;
 
-        fn trim_newline(s: &str) -> &str {
-            s.trim_end_matches(|c| c == '\n').trim_end_matches(|c| c == '\r')
-        }
-
         for &(i, ref op) in ops {
             if i > cur_index {
                 span_empty = false;
-                write!(&mut self.html, "{}", Escape(trim_newline(&line[cur_index..i]))).unwrap();
+                write!(&mut self.html, "{}", Escape(&line[cur_index..i])).unwrap();
                 cur_index = i
             }
             let mut stack = self.stack.clone();
@@ -150,7 +146,7 @@ impl<'a> ClassedTableGenerator<'a> {
             });
             self.stack = stack;
         }
-        write!(&mut self.html, "{}", Escape(trim_newline(&line[cur_index..]))).unwrap();
+        write!(&mut self.html, "{}", Escape(&line[cur_index..line.len()])).unwrap();
     }
 
     // write_classes_for_scope is modified from highlight::scope_to_classes
@@ -259,7 +255,7 @@ mod tests {
                                         <div>\
                                             <span class=\"hl-source hl-go\">\
                                                 <span class=\"hl-keyword hl-other hl-package hl-go\">package</span> \
-                                                <span class=\"hl-variable hl-other hl-go\">main</span>\
+                                                <span class=\"hl-variable hl-other hl-go\">main</span>\n\
                                             </span>\
                                         </div>\
                                     </td>\
@@ -324,7 +320,7 @@ mod tests {
                                                         </span>\
                                                     </span>\
                                                 </span>\
-                                                <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\
+                                                <span class=\"hl-punctuation hl-terminator hl-java\">;</span>\n\
                                             </span>\
                                         </div>\
                                     </td>\
@@ -333,7 +329,7 @@ mod tests {
                                     <td class=\"line\" data-line=\"2\"/>\
                                     <td class=\"code\">\
                                         <div>\
-                                            <span class=\"hl-source hl-java\"></span>\
+                                            <span class=\"hl-source hl-java\">\n</span>\
                                         </div>\
                                     </td>\
                                 </tr>\
