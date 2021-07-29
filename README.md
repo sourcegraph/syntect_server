@@ -59,10 +59,10 @@ Invoke `cargo build --release` and an optimized binary will be built (e.g. to `.
 
 Run `./publish.sh` after merging your changes.
 
-
 ## Updating Sourcegraph
 
 Once published, the image version will need to be updated in the following locations to make Sourcegraph use it:
+
 - [`sourcegraph/sourcegraph > dev/syntect_server.sh`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/dev/syntect_server.sh?subtree=true#L26:82)
 - [`sourcegraph/sourcegraph > docker-images/syntax-highlighter/build.sh`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/docker-images/syntax-highlighter/build.sh?subtree=true#L9:29)
 - [`sourcegraph/sourcegraph > cmd/server/Dockerfile`](https://sourcegraph.com/github.com/sourcegraph/sourcegraph/-/blob/cmd/server/Dockerfile?subtree=true#L54:13)
@@ -262,8 +262,9 @@ Run `./publish.sh` to build and release a new image of `syntect_server`, and the
 - HTML (Tcl) (`adp`)
 - Tcl (`tcl`)
 - TOML (`toml`)
+- Terraform (`tf`, `tfvars`, `hcl`)
 - Textile (`textile`)
-- Thrift (`thrift`)
+- Thrift (`thrift`, `frugal`)
 - TypeScript (`ts`)
 - TypeScriptReact (`tsx`)
 - VimL (`vim`, `.vimrc`, `.gvimrc`)
