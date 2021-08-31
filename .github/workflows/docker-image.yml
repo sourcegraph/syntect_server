@@ -25,5 +25,5 @@ jobs:
       
       - name: Build and Push Docker image
         run: |
-          docker build . --file Dockerfile -t sourcegraph/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
-          docker push sourcegraph/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
+          docker build . --file Dockerfile -t sourcegraph/syntect_server:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
+          docker push sourcegraph/syntect_server:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
