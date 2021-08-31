@@ -23,9 +23,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       
-      - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: .
-          push: true
-          tags: sourcegraph/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
+      - name: Build and Push Docker image
+        run: |
+          docker build . --file Dockerfile -t sourcegraph/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
+          docker push sourcegraph/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
