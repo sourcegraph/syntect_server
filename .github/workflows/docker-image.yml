@@ -13,4 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build the Docker image
-      run: docker build . --file Dockerfile -t dave/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
+      run: docker build . --file Dockerfile -t sourcegraph/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
+    - name: Push the Docker image
+      run: docker push sourcegraph/syntax_highlighter:$(date +"%y-%m-%d")_$(git log -n1 --pretty=format:%h)
