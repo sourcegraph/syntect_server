@@ -1,3 +1,5 @@
+# 🚨 Note: this repo has been archived and its contents are now in the [sourcegraph/sourcegraph](https://github.com/sourcegraph/sourcegraph/tree/main/docker-images/syntax-highlighter) repo. 
+
 # Syntect Server
 
 This is an HTTP server that exposes the Rust [Syntect](https://github.com/trishume/syntect) syntax highlighting library for use by other services. Send it some code, and it'll send you syntax-highlighted code in response.
